@@ -56,6 +56,30 @@ def main() -> int:
     if len(fence_lines) % 2:
         errors.append(f"代码围栏数量不成对：检测到 {len(fence_lines)} 行围栏")
 
+    in_prepare = False
+    prepare_level = 0
+    in_download_table = False
+    for line in lines:
+        heading = re.match(r"^(#{1,6}) ", line)
+        if heading:
+            level = len(heading.group(1))
+            if line.strip() == "### 提前准备" or line.strip() == "## 提前准备":
+                in_prepare = True
+                prepare_level = level
+            elif in_prepare and (level < prepare_level or (level == prepare_level and "若服务器" not in line)):
+                in_prepare = False
+                in_download_table = False
+        if in_prepare and "| 文件 | 下载链接 |" in line:
+            in_download_table = True
+            continue
+        if in_download_table and not line.strip().startswith("|"):
+            in_download_table = False
+        if in_download_table and line.strip().startswith("|") and "|------" not in line:
+            if "](" in line or "<https://" in line or "`https://" in line:
+                errors.append("下载资源区域禁止使用 Markdown 超链接或代码格式，必须直接写完整 https:// 地址")
+            if "https://" not in line:
+                errors.append(f"下载资源行缺少完整 https:// 地址：{line.strip()}")
+
     expected = SINGLE_HEADINGS if args.mode == "single" else CLUSTER_HEADINGS
     for heading in [*expected, *COMMON_HEADINGS]:
         if heading not in lines:
