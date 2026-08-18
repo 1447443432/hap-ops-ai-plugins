@@ -302,10 +302,10 @@ HAP升级指南-v{当前版本}-to-v{目标版本}-{模式}-{架构}
 Markdown 写入后、HTML 转换前，必须运行插件内置校验脚本：
 
 ```bash
-python tools/validate_upgrade_doc.py {markdown文件} --mode single --html {html文件}
+python tools/finalize_upgrade_doc.py {markdown文件} {html文件} --mode single
 ```
 
-集群模式将 `--mode single` 改为 `--mode cluster`。校验失败时必须回到 Markdown 修复，**禁止继续生成或交付 HTML**。该校验至少拦截：非模板规定的一级标题、缺失核心章节、正文完全重复、单机/集群命令混用，以及空的 HTML 产物。
+集群模式将 `--mode single` 改为 `--mode cluster`。**禁止直接调用 `md2html`**；HTML 必须通过 `finalize_upgrade_doc.py` 生成。该脚本会先运行校验，校验失败时自动停止，不会转换 HTML。校验至少拦截：非模板规定的一级标题、缺失核心章节、正文完全重复、单机/集群命令混用、非法反引号、下载链接超链接，以及空的 HTML 产物。
 
 如果 Python 校验脚本无法启动、运行时报错或环境没有可用 Python，**不得声称“等效检查通过”，不得生成或交付 HTML**；必须先修复运行环境或使用同等严格的本地校验脚本完成实际检查，并保留成功结果。
 
