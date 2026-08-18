@@ -115,6 +115,21 @@ def main() -> int:
             if not previous.startswith("# 作用："):
                 errors.append(f"镜像命令缺少上一行用途注释：{line.strip()}")
 
+    # 集群的升级前/升级后附加操作必须在标题上标出来源版本。
+    if args.mode == "cluster":
+        phase = None
+        for line in lines:
+            if line.startswith("### 第一阶段："):
+                phase = "before"
+            elif line.startswith("### 第三阶段："):
+                phase = "after"
+            elif line.startswith("## "):
+                phase = None
+            if phase and line.startswith("#### ") and re.match(r"^#### \d+\. ", line):
+                allowed = ("进入 config Pod", "在{数据库名}数据库中执行 DDL")
+                if "来自 v" not in line and not any(item in line for item in allowed):
+                    errors.append(f"集群附加操作标题缺少来源版本：{line}")
+
     in_code = False
     seen: dict[str, int] = {}
     for index, line in enumerate(lines, 1):

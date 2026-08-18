@@ -110,7 +110,7 @@ docker ps --format "table {{.Image}}\t{{.Names}}"
 
 {若无操作则删除本节}
 
-#### 1. 替换镜像名称 ⚠️
+#### 1. 来自 v{版本号}：替换镜像名称 ⚠️
 
 > 💡 以下命令按默认路径编写。若曾自定义安装路径，请先替换路径再执行。
 > - `docker-compose.yaml` 默认路径：`/data/mingdao/script/`
@@ -130,7 +130,7 @@ if [ -f /data/mingdao/script/run.sh ]; then
 fi
 ```
 
-#### 2. 创建 MongoDB 数据库（仅开启 MongoDB 认证时执行）
+#### 2. 来自 v{版本号}：创建 MongoDB 数据库（仅开启 MongoDB 认证时执行）
 
 > 单机模式下 MongoDB 默认未开启认证，仅在自定义过开启 MongoDB 连接认证的情况下执行此步骤
 
@@ -162,7 +162,7 @@ use {库名2}
 db.createUser({ user: "用户名", pwd: "密码", roles: [{ role: "readWrite", db: "{库名2}" }] })
 ```
 
-#### 3. 存储组件升级
+#### 3. 来自 v{版本号}：存储组件升级
 
 {若跨越多个含存储组件升级的版本，直接升级到所有版本中要求的最高版本号。}
 
@@ -173,7 +173,7 @@ db.createUser({ user: "用户名", pwd: "密码", roles: [{ role: "readWrite", d
 
 >  如果存储组件与 HAP 微服务同时升级，可在修改完两处版本号后，最后只执行一次 `restartall`，无需分开重启。
 
-#### 4. MongoDB 预置数据更新
+#### 4. 来自 v{版本号}：MongoDB 预置数据更新
 
 > 此操作在**原版本服务运行状态下**执行，无需停机。
 

@@ -55,9 +55,9 @@ crictl images | grep mingdaoyun
 | 文档预览扩展服务（ldoc）离线包 | 见 SKILL.md §4 下载地址规范 |
 | 文件存储服务离线包（**二选一**，根据当前 file 版本选择） | 见 SKILL.md §5 下载地址规范（必须合并为一行两链接，标注二选一）|
 -->
-| MongoDB 预置数据包（若本次升级涉及该操作，否则删除此行） | `{填写对应版本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_{版本}.tar.gz}` |
-| MongoDB 预置脚本（若本次升级涉及该操作，否则删除此行） | `{填写对应脚本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_k8s.sh}` |
-| 预置文件（若本次升级涉及 fileInit，离线时需提前下载，否则删除此行） | `https://pdpublic.mingdao.com/private-deployment/data/preset_file_{含fileInit的最高版本号}.tar.gz`（版本号根据升级路径实际扫描确定，详见 SKILL.md §6） |
+| MongoDB 预置数据包（若本次升级涉及该操作，否则删除此行） | {填写对应版本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_{版本}.tar.gz} |
+| MongoDB 预置脚本（若本次升级涉及该操作，否则删除此行） | {填写对应脚本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_k8s.sh} |
+| 预置文件（若本次升级涉及 fileInit，离线时需提前下载，否则删除此行） | https://pdpublic.mingdao.com/private-deployment/data/preset_file_{含fileInit的最高版本号}.tar.gz（版本号根据升级路径实际扫描确定，详见 SKILL.md §6） |
 
 在对应节点按实际需要导入或校验资源。例如：
 
@@ -121,7 +121,7 @@ kubectl get pods -n default -o jsonpath="{range .items[*]}{.metadata.name}{'\t'}
 
 {若无操作则删除本节}
 
-#### 1. 替换镜像名称 ⚠️
+#### 1. 来自 v{版本号}：替换镜像名称 ⚠️
 
 > ⚠️ **特别注意**：此操作必须在 HAP 微服务升级前完成。
 
@@ -138,7 +138,7 @@ sed -i -e 's/mingdaoyun-community/mingdaoyun-hap/g' /data/mingdao/script/kuberne
 sed -i -e 's/Community/Hap/g' -e 's/community/hap/g' /data/mingdao/script/kubernetes/update.sh
 ```
 
-#### 2. 创建 MongoDB 数据库（仅开启 MongoDB 认证时执行）
+#### 2. 来自 v{版本号}：创建 MongoDB 数据库（仅开启 MongoDB 认证时执行）
 
 > 💡 仅在已开启 MongoDB 连接认证的情况下执行此步骤。
 
@@ -166,7 +166,7 @@ db.createUser({ user: "用户名", pwd: "密码", roles: [{ role: "readWrite", d
 
 > 💡 若所有库使用同一用户认证，则需修改该用户权限以授权新数据库，而非创建新用户。
 
-#### 3. 更新 service.yaml（删除/新增服务配置）⚠️
+#### 3. 来自 v{版本号}：更新 service.yaml（删除/新增服务配置）⚠️
 
 {若无操作则删除本节}
 
@@ -233,7 +233,7 @@ spec:
 # ---- 来自 v{版本号}：新增 {服务名} 服务 ----
 ```
 
-#### 4. MongoDB 预置数据更新
+#### 4. 来自 v{版本号}：MongoDB 预置数据更新
 
 > 💡 此操作可在**原版本服务运行状态下**执行，无需停机。
 > 以下命令使用默认命名空间 `default`；若未使用默认命名空间，请将 `default` 替换为实际命名空间。
