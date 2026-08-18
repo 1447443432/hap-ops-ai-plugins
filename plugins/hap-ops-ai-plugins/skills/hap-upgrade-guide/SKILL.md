@@ -297,6 +297,18 @@ HAP升级指南-v{当前版本}-to-v{目标版本}-{模式}-{架构}
 - 解压操作幂等：重复执行不会覆盖已有文件或报错
 - **跨平台一致性保证**：`tools/md2html-py/md2html.py` 与 Go 版共用 `template.html` 与 CSS/JS 规范，对相同 Markdown 输入产出**字节级一致**的 HTML，因此 codex 等无 Go 环境的客户端用 Python 脚本即可得到与 WorkBuddy 相同的产物
 
+### 生成后硬校验（HTML 前置门槛）
+
+Markdown 写入后、HTML 转换前，必须运行插件内置校验脚本：
+
+```bash
+python tools/validate_upgrade_doc.py {markdown文件} --mode single --html {html文件}
+```
+
+集群模式将 `--mode single` 改为 `--mode cluster`。校验失败时必须回到 Markdown 修复，**禁止继续生成或交付 HTML**。该校验至少拦截：非模板规定的一级标题、缺失核心章节、正文完全重复、单机/集群命令混用，以及空的 HTML 产物。
+
+特别要求：单机文档标题必须精确为 `# HAP 升级指南（单机模式）`，集群文档标题必须精确为 `# HAP 升级指南（集群模式）`；不得自行改成“单机离线 AMD64”等标题。操作说明、YAML 和命令必须保留在规定章节中，普通说明文字不得写成 `#` 一级标题。
+
 ### Step 1. 先收集 5 项关键信息
 
 **重要**：在未收集完以下 5 项关键信息之前，不得开始获取网页或生成文档。
