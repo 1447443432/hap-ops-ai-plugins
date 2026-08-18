@@ -34,7 +34,7 @@ crictl pull registry.cn-hangzhou.aliyuncs.com/mdpublic/mingdaoyun-hap:{目标版
 ```
 
 ```bash
-# 验证镜像已拉取
+# 作用：确认目标版本镜像已成功从镜像仓库拉取
 crictl images | grep mingdaoyun
 ```
 
@@ -62,10 +62,10 @@ crictl images | grep mingdaoyun
 在对应节点按实际需要导入或校验资源。例如：
 
 ```bash
-# 解压并导入 HAP 微服务离线镜像（管道方式，替换为实际文件名）
+# 作用：解压并将目标版本 HAP 离线镜像导入 Kubernetes 使用的 containerd 镜像仓库
 gunzip -c {目标HAP微服务离线包文件名}.tar.gz | ctr -n k8s.io image import -
 
-# 验证镜像已导入
+# 作用：确认目标版本镜像已成功导入 containerd
 crictl images | grep mingdaoyun
 ```
 

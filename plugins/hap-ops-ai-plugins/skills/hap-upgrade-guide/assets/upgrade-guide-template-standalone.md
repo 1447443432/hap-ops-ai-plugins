@@ -49,14 +49,15 @@ docker pull registry.cn-hangzhou.aliyuncs.com/mdpublic/mingdaoyun-hap:{目标版
 -->
 | MongoDB 预置数据包（若本次升级涉及该操作，否则删除此行） | `{填写对应版本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_{版本}.tar.gz}` |
 | MongoDB 预置脚本（若本次升级涉及该操作，否则删除此行） | `{填写对应脚本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_docker.sh}` |
+| 外部文件对象存储预置文件包（仅外部 S3/OSS/COS/OBS 时执行；若本次升级不涉及则删除此行） | `https://pdpublic.mingdao.com/private-deployment/data/preset_file_{含fileInit的最高版本号}.tar.gz` |
 
 上传到服务器后，按实际需要导入或校验资源。例如：
 
 ```bash
-# 导入 HAP 微服务离线镜像（替换为实际文件名）
+# 作用：将提前上传的目标版本 HAP 离线镜像导入本机 Docker 镜像仓库，供后续升级使用
 docker load -i {目标HAP微服务离线包文件名}.tar.gz
 
-# 验证镜像已导入
+# 作用：确认目标版本镜像已成功导入
 docker images
 ```
 
@@ -86,7 +87,8 @@ docker images
 
 > ⚠️ **升级前必须完成备份，此步骤不可跳过。**
 
-请参考官方文档完成数据备份：[数据备份文档](https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup)
+请参考官方文档完成数据备份：
+https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup
 
 ### 4. 确认当前版本
 
