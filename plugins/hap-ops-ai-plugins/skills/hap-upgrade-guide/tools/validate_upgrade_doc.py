@@ -85,6 +85,11 @@ def main() -> int:
         if heading not in lines:
             errors.append(f"缺少规定标题：{heading}")
 
+    # 第二阶段的固定步骤必须保持模板的 h4 层级，防止生成器把它降级成 h3。
+    for heading in ("#### 1. 修改镜像版本号", "#### 2. 重启服务"):
+        if heading not in lines:
+            errors.append(f"缺少或错误降级第二阶段固定步骤：{heading}")
+
     # 防止生成器绕过模板，输出摘要式文档。
     if "| 项目 | 内容 |" not in lines or not any("**升级路径**" in line for line in lines):
         errors.append("缺少模板规定的版本信息表格；禁止用摘要段落替代版本信息表格")
@@ -115,8 +120,8 @@ def main() -> int:
             if not previous.startswith("# 作用："):
                 errors.append(f"镜像命令缺少上一行用途注释：{line.strip()}")
 
-    # 集群的升级前/升级后附加操作必须在标题上标出来源版本。
-    if args.mode == "cluster":
+    # 单机和集群的升级前/升级后附加操作都必须在标题上标出来源版本。
+    if args.mode in ("single", "cluster"):
         phase = None
         for line in lines:
             if line.startswith("### 第一阶段："):
@@ -126,9 +131,9 @@ def main() -> int:
             elif line.startswith("## "):
                 phase = None
             if phase and line.startswith("#### ") and re.match(r"^#### \d+\. ", line):
-                allowed = ("进入 config Pod", "在{数据库名}数据库中执行 DDL")
+                allowed = ("进入 config Pod", "进入微服务容器", "在{数据库名}数据库中执行 DDL")
                 if "来自 v" not in line and not any(item in line for item in allowed):
-                    errors.append(f"集群附加操作标题缺少来源版本：{line}")
+                    errors.append(f"附加操作标题缺少来源版本：{line}")
 
     in_code = False
     seen: dict[str, int] = {}
