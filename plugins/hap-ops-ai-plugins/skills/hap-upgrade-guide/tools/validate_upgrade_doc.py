@@ -85,6 +85,36 @@ def main() -> int:
         if heading not in lines:
             errors.append(f"缺少规定标题：{heading}")
 
+    # 防止生成器绕过模板，输出摘要式文档。
+    if "| 项目 | 内容 |" not in lines or not any("**升级路径**" in line for line in lines):
+        errors.append("缺少模板规定的版本信息表格；禁止用摘要段落替代版本信息表格")
+
+    # 单机备份只允许提示和官方链接，不允许把旧版备份命令带回来。
+    if args.mode == "single":
+        try:
+            backup_start = lines.index("### 3. 数据备份")
+            backup_end = next(
+                (i for i in range(backup_start + 1, len(lines)) if re.match(r"^###? ", lines[i])),
+                len(lines),
+            )
+            backup_text = "\n".join(lines[backup_start:backup_end])
+            if "⚠️ **升级前必须完成备份，此步骤不可跳过。**" not in backup_text:
+                errors.append("单机数据备份缺少强制提示")
+            if "https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup" not in backup_text:
+                errors.append("单机数据备份缺少官方备份文档完整 URL")
+            for token in ("docker exec", "mongodump", "backup mysql mongodb file"):
+                if token in backup_text:
+                    errors.append(f"单机数据备份区域禁止出现备份命令：{token}")
+        except ValueError:
+            pass
+
+    # 镜像导入和验证命令必须在同一代码块中有用途注释。
+    for index, line in enumerate(lines):
+        if line.strip().startswith(("docker load", "gunzip -c ")) or line.strip() in ("docker images", "crictl images | grep mingdaoyun"):
+            previous = lines[index - 1].strip() if index else ""
+            if not previous.startswith("# 作用："):
+                errors.append(f"镜像命令缺少上一行用途注释：{line.strip()}")
+
     in_code = False
     seen: dict[str, int] = {}
     for index, line in enumerate(lines, 1):
