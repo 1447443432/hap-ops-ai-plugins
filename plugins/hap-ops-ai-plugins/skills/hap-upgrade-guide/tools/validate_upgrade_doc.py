@@ -166,6 +166,34 @@ def main() -> int:
         if token in text:
             errors.append(f"{args.mode} 模式包含禁止命令：{token}")
 
+    if args.mode == "cluster":
+        service_headings = [
+            (index, line)
+            for index, line in enumerate(lines)
+            if line.startswith("#### ") and "来自 v" in line and ("删除" in line or "新增" in line)
+        ]
+        code_lines: list[str] = []
+        in_code = False
+        for line in lines:
+            if line.startswith("```"):
+                in_code = not in_code
+                continue
+            if in_code:
+                code_lines.append(line)
+        api_count = sum(1 for line in code_lines if line.strip().startswith("apiVersion:"))
+        separator_count = sum(1 for line in code_lines if line.strip() == "---")
+        for index, heading in service_headings:
+            if lines[index - 1].strip() if index else False:
+                errors.append(f"集群服务版本块前必须保留一个空行：{heading}")
+            if "删除" in heading and api_count < 2:
+                errors.append(f"删除服务必须包含完整 Deployment 和 Service YAML：{heading}")
+            if "新增" in heading and api_count < 2:
+                errors.append(f"新增服务必须包含完整 Deployment 和 Service YAML：{heading}")
+            if ("、" in heading or " 和 " in heading) and ("删除" in heading or "新增" in heading):
+                errors.append(f"不同服务不得合并到同一版本块：{heading}")
+        if service_headings and api_count and separator_count == 0:
+            errors.append("集群 service.yaml YAML 配置缺少 --- 分隔符")
+
     if args.html is not None and (not args.html.exists() or args.html.stat().st_size == 0):
         errors.append(f"HTML 产物不存在或为空：{args.html}")
 
