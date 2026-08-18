@@ -85,6 +85,20 @@ def main() -> int:
         if heading not in lines:
             errors.append(f"缺少规定标题：{heading}")
 
+    if args.mode == "cluster":
+        same_as_single = (
+            '请确保您的授权密钥仍在"升级服务"有效期内',
+            '如有前端二次开发，请联系前端二开负责同事确认此操作已完成',
+            '拉取最新的前端二开基础代码',
+            '将自定义的二开代码合并（merge）进最新基础代码',
+            '构建并发布更新后的前端服务',
+        )
+        for phrase in same_as_single:
+            if phrase not in text:
+                errors.append(f"集群升级前准备未与单机保持一致，缺少文案：{phrase}")
+        if "请参考官方备份与部署文档执行备份" in text:
+            errors.append("集群数据备份不得出现“请参考官方备份与部署文档执行备份。”")
+
     # 第二阶段的固定步骤必须保持对应模板的 h4 层级，防止生成器降级标题。
     if args.mode == "single":
         for heading in ("#### 1. 修改镜像版本号", "#### 2. 重启服务"):
