@@ -17,7 +17,7 @@ COMMON_HEADINGS = [
 ]
 SINGLE_HEADINGS = [
     "# HAP 升级指南（单机模式）",
-    "## 提前准备",
+    "### 提前准备",
     "### 1. 授权有效期检查",
     "### 2. 前端二次开发注意事项",
     "### 3. 数据备份",
@@ -54,10 +54,6 @@ def main() -> int:
         if heading not in lines:
             errors.append(f"缺少规定标题：{heading}")
 
-    for index, line in enumerate(lines, 1):
-        if index > 1 and re.match(r"^# ", line):
-            errors.append(f"第 {index} 行出现额外一级标题：{line}")
-
     in_code = False
     seen: dict[str, int] = {}
     for index, line in enumerate(lines, 1):
@@ -66,6 +62,8 @@ def main() -> int:
             continue
         if in_code:
             continue
+        if index > 1 and re.match(r"^# ", line):
+            errors.append(f"第 {index} 行出现额外一级标题：{line}")
         candidate = line.strip()
         if len(candidate) < 12 or candidate.startswith(("#", "|", ">", "- ", "* ")):
             continue
