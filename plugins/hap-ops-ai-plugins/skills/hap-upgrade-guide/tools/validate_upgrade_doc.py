@@ -85,10 +85,15 @@ def main() -> int:
         if heading not in lines:
             errors.append(f"缺少规定标题：{heading}")
 
-    # 第二阶段的固定步骤必须保持模板的 h4 层级，防止生成器把它降级成 h3。
-    for heading in ("#### 1. 修改镜像版本号", "#### 2. 重启服务"):
-        if heading not in lines:
-            errors.append(f"缺少或错误降级第二阶段固定步骤：{heading}")
+    # 第二阶段的固定步骤必须保持对应模板的 h4 层级，防止生成器降级标题。
+    if args.mode == "single":
+        for heading in ("#### 1. 修改镜像版本号", "#### 2. 重启服务"):
+            if heading not in lines:
+                errors.append(f"缺少或错误降级第二阶段固定步骤：{heading}")
+    if args.mode == "cluster":
+        for heading in ("#### 1. 滚动更新", "#### 2. 非滚动更新"):
+            if heading not in lines:
+                errors.append(f"缺少或错误降级集群更新方式步骤：{heading}")
 
     # 防止生成器绕过模板，输出摘要式文档。
     if "| 项目 | 内容 |" not in lines or not any("**升级路径**" in line for line in lines):

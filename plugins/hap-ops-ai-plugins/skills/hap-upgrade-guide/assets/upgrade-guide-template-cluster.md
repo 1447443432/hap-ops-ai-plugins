@@ -257,7 +257,7 @@ bash ./preset_mongodb_k8s.sh {该操作涉及的最新版本号} default ./prese
 
 在控制节点 `/data/mingdao/script/kubernetes` 目录下执行：
 
-**方式一：滚动更新（推荐，需各节点有 40% 左右可用内存）**
+#### 1. 滚动更新（推荐，需各节点有 40% 左右可用内存）
 
 ```bash
 bash update.sh update hap {目标版本号}
@@ -265,7 +265,7 @@ bash update.sh update hap {目标版本号}
 
 执行后大约等待 3-5 分钟完成，期间服务基本不中断。
 
-**方式二：非滚动更新（可用内存不足时使用）**
+#### 2. 非滚动更新（可用内存不足时使用）
 
 ```bash
 # 先停止微服务
