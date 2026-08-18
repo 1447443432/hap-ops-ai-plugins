@@ -34,6 +34,18 @@ CLUSTER_HEADINGS = [
     "### 5. 检查资源",
 ]
 
+# 集群前两项必须复用单机模板的完整文案；目标发布日期所在行允许被生成器替换。
+CLUSTER_PREP_EXACT_LINES = (
+    '> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。',
+    '请检查您的授权密钥是否仍在"升级服务"有效期内，并确认授权到期日晚于目标版本发布日期。若授权即将到期或已过期，请联系明道云商务团队续期后再执行升级。',
+    '> ⚠️ **注意**：如有前端二次开发，请联系前端二开负责同事确认此操作已完成，否则可能导致升级后前端功能异常。',
+    '若系统中存在前端二次开发（即有基于 HAP 前端源码进行过定制开发），升级后前端代码可能与新版本存在差异，需要**前端二开负责同事**执行以下操作：',
+    '1. 拉取最新的前端二开基础代码（官方前端仓库对应目标版本的分支或 tag）',
+    '2. 将自定义的二开代码合并（merge）进最新基础代码，处理可能存在的冲突',
+    '3. 构建并发布更新后的前端服务，使新版本前端生效',
+    '若系统中**没有**前端二次开发，忽略本注意事项。',
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -44,6 +56,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     args = parse_args()
     text = args.markdown.read_text(encoding="utf-8")
     lines = text.splitlines()
@@ -86,16 +100,14 @@ def main() -> int:
             errors.append(f"缺少规定标题：{heading}")
 
     if args.mode == "cluster":
-        same_as_single = (
-            '请确保您的授权密钥仍在"升级服务"有效期内',
-            '如有前端二次开发，请联系前端二开负责同事确认此操作已完成',
-            '拉取最新的前端二开基础代码',
-            '将自定义的二开代码合并（merge）进最新基础代码',
-            '构建并发布更新后的前端服务',
-        )
-        for phrase in same_as_single:
-            if phrase not in text:
-                errors.append(f"集群升级前准备未与单机保持一致，缺少文案：{phrase}")
+        for required_line in CLUSTER_PREP_EXACT_LINES:
+            if required_line not in text:
+                errors.append(f"集群升级前准备必须与单机逐条一致，缺少固定文案：{required_line}")
+        auth_lines = [line for line in lines if line.startswith('> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。')]
+        if len(auth_lines) != 1:
+            errors.append("集群授权有效期检查必须保留单机模板的完整重要提示，不能压缩或改写")
+        if text.count("### 1. 授权有效期检查") != 1 or text.count("### 2. 前端二次开发注意事项") != 1:
+            errors.append("集群升级前准备的授权和前端二开章节必须各出现一次，不能缺失或重复")
         if "请参考官方备份与部署文档执行备份" in text:
             errors.append("集群数据备份不得出现“请参考官方备份与部署文档执行备份。”")
 
