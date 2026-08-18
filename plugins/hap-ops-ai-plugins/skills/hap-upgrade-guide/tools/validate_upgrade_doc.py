@@ -49,6 +49,13 @@ def main() -> int:
     lines = text.splitlines()
     errors: list[str] = []
 
+    if "\\`" in text:
+        errors.append("Markdown 包含被反斜杠转义的反引号 \\`；必须写入真实 ASCII 反引号")
+
+    fence_lines = [line for line in lines if re.match(r"^```(?:[A-Za-z0-9_+.-]+)?\s*$", line)]
+    if len(fence_lines) % 2:
+        errors.append(f"代码围栏数量不成对：检测到 {len(fence_lines)} 行围栏")
+
     expected = SINGLE_HEADINGS if args.mode == "single" else CLUSTER_HEADINGS
     for heading in [*expected, *COMMON_HEADINGS]:
         if heading not in lines:
