@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                   "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 16.5px; line-height: 1.75; color: #24292f; background: #f6f8fa;
+    }
+
+    /* ========= 侧边栏折叠按钮 ========= */
+    .sidebar-toggle {
+      display: none;
+      position: fixed; top: 12px; left: 12px; z-index: 200;
+      background: #0969da; color: #fff; border: none; border-radius: 6px;
+      padding: 6px 12px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    .sidebar-toggle:hover { background: #0752b3; }
+
+    /* ========= 布局 ========= */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px; flex-shrink: 0; background: #fff;
+      border-right: 1px solid #d0d7de; position: fixed; top: 0; left: 0;
+      height: 100vh; overflow-y: auto; padding: 24px 0;
+      transition: transform .25s ease; z-index: 100;
+    }
+    .sidebar.collapsed { transform: translateX(-260px); }
+
+    .sidebar-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: #57606a; padding: 0 20px 10px;
+      border-bottom: 1px solid #d0d7de; margin-bottom: 12px;
+    }
+    .toc { list-style: none; padding: 0; }
+    .toc li a {
+      display: block; padding: 4px 20px; font-size: 14px; color: #24292f;
+      text-decoration: none; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; border-left: 3px solid transparent;
+    }
+    .toc li a:hover { background: #f6f8fa; color: #0969da; }
+    .toc li a.active { border-left-color: #0969da; color: #0969da; font-weight: 600; background: #f0f6ff; }
+    .toc li.h3 a { padding-left: 34px; font-size: 14px; color: #57606a; }
+    .toc li.h4 a { padding-left: 48px; font-size: 13px; color: #57606a; }
+    .toc li.h5 a { padding-left: 62px; font-size: 12.5px; color: #57606a; }
+
+    /* ========= 目录折叠 ========= */
+    .toc-section > .toc-header {
+      display: flex; align-items: center; gap: 2px;
+    }
+    .toc-toggle {
+      background: none; border: none; font-size: 11px; cursor: pointer;
+      padding: 0; width: 16px; height: 16px; color: #57606a;
+      flex-shrink: 0; transition: transform .15s;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 3px; line-height: 1;
+    }
+    .toc-toggle:hover { background: #f6f8fa; }
+    .toc-section.collapsed > .toc-header .toc-toggle { transform: rotate(-90deg); }
+    .toc-children { list-style: none; padding: 0; }
+    .toc-section.collapsed > .toc-children { display: none; }
+
+    .main { flex: 1; margin-left: 260px; background: #f6f8fa; min-width: 0; transition: margin-left .25s ease; }
+    .main.expanded { margin-left: 0; }
+    .content {
+      max-width: 980px; margin: 0 auto; padding: 24px 48px 60px;
+      background: #fff; border-left: 1px solid #d0d7de;
+      border-right: 1px solid #d0d7de; min-height: 100vh;
+    }
+
+    /* ========= 遮罩（移动端点击侧边栏外关闭） ========= */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 99;
+    }
+    .sidebar-overlay.active { display: block; }
+
+    h1 { font-size: 31px; font-weight: 700; margin: 0 0 16px; color: #1f2328; }
+    h2 { font-size: 24px; font-weight: 600; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #d0d7de; color: #1f2328; }
+    h3 { font-size: 20px; font-weight: 600; margin: 28px 0 10px; color: #1f2328; }
+    h4 { font-size: 17.5px; font-weight: 600; margin: 22px 0 8px; color: #1f2328; }
+    h5 { font-size: 15.5px; font-weight: 600; margin: 18px 0 6px; color: #1f2328; }
+
+    p { margin-bottom: 14px; color: #24292f; }
+    ul, ol { margin: 8px 0 14px 24px; color: #24292f; }
+    li { margin-bottom: 5px; line-height: 1.7; }
+    li > ul, li > ol { margin: 4px 0 4px 20px; }
+
+    blockquote { border-left: 4px solid #d0d7de; margin: 16px 0; padding: 4px 16px; color: #57606a; }
+    blockquote p { margin-bottom: 4px; }
+
+    /* 特别注意高亮样式 */
+    blockquote.attention {
+      border-left: 4px solid #cf222e; background: #fff1f0; padding: 12px 16px; color: #1f2328; border-radius: 0 6px 6px 0;
+    }
+    blockquote.attention p { color: #1f2328; margin-bottom: 4px; }
+
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15.5px; }
+    th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }
+    th { background: #f6f8fa; font-weight: 600; }
+    tr:nth-child(even) td { background: #f6f8fa; }
+
+    /* 版本信息表格（文档第一个表格）特殊样式 */
+    table.meta-block { border-radius: 8px; overflow: hidden; margin-bottom: 28px; }
+    table.meta-block th { color: #57606a; font-size: 14px; text-transform: uppercase; letter-spacing: .4px; width: 140px; }
+    /* 日期高亮样式 */
+    .date-val { color: #0969da; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .date-val-primary { color: #cf222e; font-size: 1.05em; }
+    .inline-date { color: #0969da; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 93%; background: #eef0f3; border: 1px solid #d0d7de;
+      border-radius: 4px; padding: 2px 5px; color: #cf222e;
+    }
+
+    .code-block {
+      position: relative; margin: 16px 0; border-radius: 6px;
+      overflow: hidden; border: 1px solid #d0d7de;
+    }
+    .code-block pre {
+      background: #f6f8fa; color: #24292f; margin: 0;
+      padding: 16px; overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 15px; line-height: 1.5;
+    }
+    .code-block pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; border-radius: 0; }
+    .code-block .code-lang-label {
+      position: absolute; top: 8px; left: 12px;
+      font-size: 12px; font-family: "SFMono-Regular", Consolas, monospace;
+      color: #57606a; text-transform: uppercase; letter-spacing: .5px; pointer-events: none;
+    }
+    .code-block[data-lang]:not([data-lang=""]) pre { padding-top: 32px; }
+
+    .copy-btn {
+      position: absolute; top: 6px; right: 8px; padding: 3px 10px;
+      background: rgba(175,184,193,.8); color: #24292f;
+      border: 1px solid rgba(27,31,35,.15); border-radius: 4px; cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: background .15s, color .15s; z-index: 2;
+    }
+    .copy-btn:hover { background: rgba(175,184,193,1); }
+    .copy-btn.copied { background: #2ea44f; color: #fff; border-color: transparent; }
+
+    /* ========= 表格内 URL 复制按钮 ========= */
+    td.url-cell {
+      position: relative; max-width: 480px; white-space: nowrap;
+    }
+    td.url-cell .url-text-wrap {
+      display: block; overflow-x: auto; white-space: nowrap;
+      padding-right: 52px; padding-top: 1px;
+    }
+    td.url-cell .url-text-wrap::-webkit-scrollbar { height: 3px; }
+    td.url-cell .url-text-wrap::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 2px; }
+    .url-copy-btn {
+      position: absolute; top: 7px; right: 8px;
+      padding: 2px 8px;
+      background: rgba(175,184,193,.8); color: #24292f;
+      border: 1px solid rgba(27,31,35,.15); border-radius: 4px; cursor: pointer;
+      font-size: 12px; font-weight: 500; transition: background .15s, color .15s; z-index: 2;
+    }
+    .url-copy-btn:hover { background: rgba(175,184,193,1); }
+    .url-copy-btn.copied { background: #2ea44f; color: #fff; border-color: transparent; }
+
+    /* ========= 侧边栏关闭按钮（桌面端和移动端均显示） ========= */
+    .sidebar-close {
+      display: block; position: absolute; top: 10px; right: 10px;
+      background: #fff; border: 1px solid #d0d7de; font-size: 20px; color: #57606a;
+      cursor: pointer; padding: 2px 6px; border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(27,31,35,.1);
+      width: 28px; height: 28px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sidebar-close:hover { background: #f6f8fa; color: #cf222e; border-color: #cf222e; }
+
+    hr { border: none; border-top: 1px solid #d0d7de; margin: 28px 0; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ========= 响应式：平板及移动端 ========= */
+    @media (max-width: 768px) {
+      .sidebar-toggle { display: block; }
+
+      .sidebar {
+        transform: translateX(-260px);
+        box-shadow: 2px 0 16px rgba(0,0,0,.15);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main { margin-left: 0; }
+      .main.expanded { margin-left: 0; }
+
+      .content {
+        padding: 52px 16px 40px;
+        border-left: none; border-right: none;
+      }
+
+      h1 { font-size: 24px; }
+      h2 { font-size: 20px; }
+      h3 { font-size: 17.5px; }
+
+      table { font-size: 14px; display: block; overflow-x: auto; }
+      td.url-cell { max-width: 280px; }
+
+      .code-block pre { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+<button class="sidebar-toggle">◀ 收起目录</button>
+<div class="sidebar-overlay"></div>
+<div class="layout">
+  <nav class="sidebar">
+    <button class="sidebar-close" title="关闭目录">✕</button>
+    <div class="sidebar-title">文档目录</div>
+    {{TOC}}
+  </nav>
+  <div class="main">
+    <div class="content">
+      {{BODY}}
+    </div>
+  </div>
+</div>
+<script>
+// 代码块复制按钮
+document.querySelectorAll('.copy-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(function() {
+      btn.textContent = '已复制';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
+    });
+  });
+});
+
+// 表格内 URL 复制按钮（自动为包含 https:// 的单元格添加，按钮固定右上角）
+(function() {
+  document.querySelectorAll('table td').forEach(function(td) {
+    var text = td.textContent;
+    if (text.indexOf('https://') === -1 && text.indexOf('http://') === -1) return;
+    td.classList.add('url-cell');
+    // 将已有内容包裹在可滚动容器中，使按钮不被卷走
+    var wrap = document.createElement('span');
+    wrap.className = 'url-text-wrap';
+    while (td.firstChild) wrap.appendChild(td.firstChild);
+    td.appendChild(wrap);
+    var btn = document.createElement('button');
+    btn.className = 'url-copy-btn';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var url = wrap.textContent.trim();
+      navigator.clipboard.writeText(url).then(function() {
+        btn.textContent = '已复制';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
+      });
+    });
+    td.appendChild(btn);
+  });
+})();
+
+// 侧边栏折叠（桌面端按钮 + 移动端遮罩 + 关闭按钮）
+(function() {
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var toggle = document.querySelector('.sidebar-toggle');
+  var overlay = document.querySelector('.sidebar-overlay');
+  var closeBtn = document.querySelector('.sidebar-close');
+  if (!sidebar || !toggle) return;
+
+  var isMobile = function() { return window.innerWidth <= 768; };
+
+  function closeSidebar() {
+    if (isMobile()) {
+      sidebar.classList.remove('open');
+      if (overlay) overlay.classList.remove('active');
+      toggle.textContent = '☰ 目录';
+    } else {
+      sidebar.classList.add('collapsed');
+      if (main) main.classList.add('expanded');
+      toggle.textContent = '▶ 展开目录';
+      toggle.style.display = 'block';
+    }
+  }
+
+  toggle.addEventListener('click', function() {
+    if (isMobile()) {
+      var isOpen = sidebar.classList.contains('open');
+      if (isOpen) {
+        closeSidebar();
+      } else {
+        sidebar.classList.add('open');
+        if (overlay) overlay.classList.add('active');
+        toggle.textContent = '✕ 关闭';
+      }
+    } else {
+      var isCollapsed = sidebar.classList.contains('collapsed');
+      if (isCollapsed) {
+        sidebar.classList.remove('collapsed');
+        if (main) main.classList.remove('expanded');
+        toggle.textContent = '◀ 收起目录';
+        toggle.style.display = 'none';
+      } else {
+        closeSidebar();
+      }
+    }
+  });
+
+  // 侧边栏内关闭按钮
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeSidebar);
+  }
+
+  // 点击遮罩关闭侧边栏（移动端）
+  if (overlay) {
+    overlay.addEventListener('click', closeSidebar);
+  }
+
+  // 初始化：桌面端 sidebar 展开时隐藏 toggle，移动端始终显示
+  if (!isMobile() && !sidebar.classList.contains('collapsed')) {
+    toggle.style.display = 'none';
+  }
+  toggle.textContent = isMobile() ? '☰ 目录' : '◀ 收起目录';
+
+  // 窗口尺寸变化时重置状态
+  window.addEventListener('resize', function() {
+    if (!isMobile()) {
+      sidebar.classList.remove('open');
+      if (overlay) overlay.classList.remove('active');
+      toggle.style.display = sidebar.classList.contains('collapsed') ? 'block' : 'none';
+    } else {
+      sidebar.classList.remove('collapsed');
+      if (main) main.classList.remove('expanded');
+      toggle.style.display = 'block';
+    }
+    toggle.textContent = isMobile() ? '☰ 目录' : '◀ 收起目录';
+  });
+})();
+
+// 目录交互：折叠、点击跳转、滚动高亮（TOC 由后端静态生成）
+(function() {
+  var toc = document.getElementById('toc');
+  if (!toc) return;
+
+  // 折叠按钮事件
+  document.querySelectorAll('.toc-toggle').forEach(function(toggle) {
+    toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggle.closest('.toc-section').classList.toggle('collapsed');
+    });
+  });
+
+  // 点击目录链接 —— 不拦截原生 anchor 跳转，让浏览器自行导航（100% 可靠）
+  // 同时立即同步高亮状态，并锁定 scroll 高亮更新，防止 click 后被 scroll 事件覆盖
+  var allLinks = toc.querySelectorAll('a');
+  var justClicked = false;
+  var clickTimer = null;
+  allLinks.forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      // 立即高亮当前点击项，移除其他项高亮
+      allLinks.forEach(function(link) { link.classList.remove('active'); });
+      a.classList.add('active');
+
+      // 锁定 scroll 高亮更新，防止 anchor 跳转过程中 scroll 事件覆盖 active
+      justClicked = true;
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(function() { justClicked = false; }, 400);
+
+      var isMob = window.innerWidth <= 768;
+      if (isMob) {
+        // 移动端：仍然让原生跳转发生，但延迟关闭侧边栏
+        setTimeout(function() {
+          var sb = document.querySelector('.sidebar');
+          if (sb) { sb.classList.remove('open'); }
+          var ov = document.querySelector('.sidebar-overlay');
+          if (ov) ov.classList.remove('active');
+          var tg = document.querySelector('.sidebar-toggle');
+          if (tg) tg.textContent = '☰ 目录';
+        }, 200);
+      }
+      // 桌面端：完全不拦截，原生 anchor 跳转 + 点击时即时高亮 + scroll 锁定
+    });
+  });
+
+  // 滚动高亮当前章节
+  var headings = document.querySelectorAll('.content h2, .content h3, .content h4, .content h5');
+  function onScroll() {
+    if (justClicked) return; // 点击后短时间内跳过 scroll 高亮更新，避免被覆盖
+    var scrollY = window.scrollY + 80;
+    var active = null;
+    headings.forEach(function(h) { if (h.offsetTop <= scrollY) active = h.id; });
+    allLinks.forEach(function(a) { a.classList.toggle('active', a.getAttribute('href') === '#' + active); });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
