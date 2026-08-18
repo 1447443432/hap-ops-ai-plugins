@@ -194,6 +194,17 @@ def main() -> int:
         if service_headings and api_count and separator_count == 0:
             errors.append("集群 service.yaml YAML 配置缺少 --- 分隔符")
 
+    # 提到 run.sh 就必须提供完整的判断、替换命令和结束符，禁止只留文字提示。
+    if "run.sh" in text:
+        required_run_lines = (
+            "if [ -f /data/mingdao/script/run.sh ]; then",
+            "sed -i -e 's/mingdaoyun-community/mingdaoyun-hap/g' /data/mingdao/script/run.sh",
+            "fi",
+        )
+        for required_line in required_run_lines:
+            if required_line not in text:
+                errors.append(f"提到 run.sh 但缺少完整操作命令：{required_line}")
+
     if args.html is not None and (not args.html.exists() or args.html.stat().st_size == 0):
         errors.append(f"HTML 产物不存在或为空：{args.html}")
 

@@ -136,6 +136,11 @@ sed -i -e 's/mingdaoyun-community/mingdaoyun-hap/g' /data/mingdao/script/kuberne
 
 # 替换 update.sh 中的服务名称
 sed -i -e 's/Community/Hap/g' -e 's/community/hap/g' /data/mingdao/script/kubernetes/update.sh
+
+# 如果存在 run.sh，则同步替换其中的镜像名称
+if [ -f /data/mingdao/script/run.sh ]; then
+  sed -i -e 's/mingdaoyun-community/mingdaoyun-hap/g' /data/mingdao/script/run.sh
+fi
 ```
 
 #### 2. 来自 v{版本号}：创建 MongoDB 数据库（仅开启 MongoDB 认证时执行）
