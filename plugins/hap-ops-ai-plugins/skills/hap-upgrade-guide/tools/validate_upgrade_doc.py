@@ -64,6 +64,18 @@ def main() -> int:
     lines = text.splitlines()
     errors: list[str] = []
 
+    # 文件名统一采用 WorkBuddy 成品格式；“离线”属于文档内容场景，不放入文件名。
+    mode_name = "单机" if args.mode == "single" else "集群"
+    filename_pattern = rf"^HAP升级指南-v\d+(?:\.\d+)+-to-v\d+(?:\.\d+)+-{mode_name}-(amd64|arm64)\.md$"
+    if not re.match(filename_pattern, args.markdown.name):
+        errors.append(
+            f"Markdown 文件名不符合规范，必须为：HAP升级指南-v当前版本-to-v目标版本-{mode_name}-amd64或arm64.md"
+        )
+    if args.html is not None:
+        expected_html_name = args.markdown.with_suffix(".html").name
+        if args.html.name != expected_html_name:
+            errors.append(f"HTML 文件名必须与 Markdown 同名，仅扩展名不同：{expected_html_name}")
+
     if "\\`" in text:
         errors.append("Markdown 包含被反斜杠转义的反引号 \\`；必须写入真实 ASCII 反引号")
 
@@ -103,7 +115,7 @@ def main() -> int:
     if args.mode == "cluster":
         for required_line in CLUSTER_PREP_EXACT_LINES:
             if required_line not in text:
-                errors.append(f"集群升级前准备必须与单机逐条一致，缺少固定文案：{required_line}")
+                errors.append(f"集群升级前准备必须与 WorkBuddy 集群成品逐条一致，缺少固定文案：{required_line}")
         auth_lines = [line for line in lines if line.startswith('> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。若目标版本（**')]
         if len(auth_lines) != 1:
             errors.append("集群授权有效期检查必须保留 WorkBuddy 集群成品的完整重要提示，不能压缩或改写")
