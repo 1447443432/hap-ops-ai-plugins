@@ -64,6 +64,25 @@ def main() -> int:
     lines = text.splitlines()
     errors: list[str] = []
 
+    forbidden_summary_headings = (
+        "## 1. 结论与路径",
+        "## 2. 离线资源",
+        "## 3. 升级前检查",
+        "## 4. 升级前操作",
+        "## 5. 升级微服务",
+        "## 6. 升级后操作",
+        "## 7. 验证与回退",
+    )
+    for heading in forbidden_summary_headings:
+        if heading in lines:
+            errors.append(f"禁止使用摘要式章节骨架：{heading}；必须按 WorkBuddy 固定章节生成")
+
+    minimum_length = 9000 if args.mode == "single" else 14000
+    if len(text) < minimum_length:
+        errors.append(
+            f"文档内容过短（{len(text)} 字符），疑似被摘要化；{args.mode} 模式至少应保留 {minimum_length} 字符的完整模板内容"
+        )
+
     # 文件名统一采用 WorkBuddy 成品格式；“离线”属于文档内容场景，不放入文件名。
     mode_name = "单机" if args.mode == "single" else "集群"
     filename_pattern = rf"^HAP升级指南-v\d+(?:\.\d+)+-to-v\d+(?:\.\d+)+-{mode_name}-(amd64|arm64)\.md$"
