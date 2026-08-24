@@ -1,13 +1,15 @@
 # HAP 运维 AI Codex Plugins
 
-本项目是可安装的 Codex plugin，当前包含 HAP 私有部署升级 skill。
+本项目是可安装的 Codex plugin，当前包含 HAP 私有部署升级和 Private Document 发布 skills。
 
 ## 插件位置
 
 - 插件目录：`plugins/hap-ops-ai-plugins/`
 - 插件清单：`plugins/hap-ops-ai-plugins/.codex-plugin/plugin.json`
 - marketplace 清单：`.agents/plugins/marketplace.json`
-- 当前 skill：`plugins/hap-ops-ai-plugins/skills/hap-upgrade-guide/`
+- 当前 skills：
+  - `plugins/hap-ops-ai-plugins/skills/hap-upgrade-guide/`
+  - `plugins/hap-ops-ai-plugins/skills/hap-private-document-release/`
 
 原项目根目录下的 `HAP升级指南/` 已迁移至插件目录，不再作为独立 skill 维护。
 

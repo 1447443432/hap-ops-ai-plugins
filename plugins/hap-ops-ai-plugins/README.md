@@ -5,6 +5,7 @@
 ## 当前包含
 
 - `skills/hap-upgrade-guide/`：HAP 私有部署版本升级咨询与 Markdown + HTML 升级文档生成。
+- `skills/hap-private-document-release/`：HAP Private Document Jenkins 构建、微服务工作表发布申请和结果核验 SOP。
 
 ## 扩展其他 skill
 
