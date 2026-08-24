@@ -11,8 +11,6 @@
   - `plugins/hap-ops-ai-plugins/skills/hap-upgrade-guide/`
   - `plugins/hap-ops-ai-plugins/skills/hap-private-document-release/`
 
-原项目根目录下的 `HAP升级指南/` 已迁移至插件目录，不再作为独立 skill 维护。
-
 ## 安装
 
 在项目根目录执行：
