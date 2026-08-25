@@ -1,6 +1,6 @@
 # HAP 运维 AI Codex Plugins
 
-本项目是可安装的 Codex plugin，当前包含 HAP 私有部署升级和 Private Document 发布 skills。
+本项目是可安装的 Codex plugin，面向 HAP 私有部署升级、发布、交付、排障和日常运维，同时提供通用的安全写入与最小实现约束 skills。
 
 ## 插件位置
 
@@ -8,13 +8,15 @@
 - 插件清单：`plugins/hap-ops-ai-plugins/.codex-plugin/plugin.json`
 - marketplace 清单：`.agents/plugins/marketplace.json`
 - 当前 skills：
-  - `plugins/hap-ops-ai-plugins/skills/hap-upgrade-guide/`
-  - `plugins/hap-ops-ai-plugins/skills/hap-private-document-release/`
-  - `plugins/hap-ops-ai-plugins/skills/utf8-safe-write/`
-  - `plugins/hap-ops-ai-plugins/skills/ponytail/`
-  - `plugins/hap-ops-ai-plugins/skills/hap-delivery-docs/`
-  - `plugins/hap-ops-ai-plugins/skills/hap-deployment-troubleshooter/`
-  - `plugins/hap-ops-ai-plugins/skills/hap-mongodb-slowlog-analysis/`
+  - `hap-upgrade-guide`：HAP 私有部署版本升级咨询、兼容性核验和 Markdown/HTML 升级文档生成。
+  - `hap-private-document-release`：Jenkins 构建、微服务工作表发布申请和结果核验。
+  - `hap-delivery-docs`：HAP 私有部署交付文档套件生成。
+  - `hap-deployment-troubleshooter`：HAP 私有部署故障排查和实战案例分析。
+  - `hap-mongodb-slowlog-analysis`：MongoDB 4.4.x 慢日志分析、索引建议和可执行命令生成。
+  - `utf8-safe-write`：Windows PowerShell/Git 项目的 UTF-8、BOM 和换行安全编辑。
+  - `ponytail`：编码任务的最小实现、YAGNI 和反过度设计约束。
+
+对应目录：`plugins/hap-ops-ai-plugins/skills/<skill-name>/`
 
 ## 安装
 
