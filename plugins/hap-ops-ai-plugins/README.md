@@ -10,6 +10,7 @@
 - `skills/ponytail/`：编码任务的最小实现、YAGNI 和反过度设计约束。
 - `skills/hap-delivery-docs/`：HAP 私有部署交付文档套件生成。
 - `skills/hap-deployment-troubleshooter/`：HAP 私有部署故障排查和实战案例。
+- `skills/hap-mongodb-slowlog-analysis/`：MongoDB 4.4.x 慢日志分析、索引建议和可执行命令生成。
 
 ## 扩展其他 skill
 
