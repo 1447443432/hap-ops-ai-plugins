@@ -11,6 +11,7 @@
   - `plugins/hap-ops-ai-plugins/skills/hap-upgrade-guide/`
   - `plugins/hap-ops-ai-plugins/skills/hap-private-document-release/`
   - `plugins/hap-ops-ai-plugins/skills/utf8-safe-write/`
+  - `plugins/hap-ops-ai-plugins/skills/ponytail/`
 
 ## 安装
 
