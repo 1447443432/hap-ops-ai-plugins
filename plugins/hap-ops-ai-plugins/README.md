@@ -11,6 +11,7 @@
 - `skills/hap-delivery-docs/`：HAP 私有部署交付文档套件生成。
 - `skills/hap-deployment-troubleshooter/`：HAP 私有部署故障排查和实战案例。
 - `skills/hap-mongodb-slowlog-analysis/`：MongoDB 4.4.x 慢日志分析、索引建议和可执行命令生成。
+- `skills/github-image-workflow-builder/`：创建、修复和验证 amd64/arm64 GitHub Actions 镜像构建、Release、镜像推送和 HAP Webhook Workflow。
 
 ## 扩展其他 skill
 
