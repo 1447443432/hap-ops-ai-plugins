@@ -47,6 +47,13 @@ CLUSTER_PREP_EXACT_LINES = (
     '对数据存储相关的服务器进行备份，确保以下组件的数据均已备份：MongoDB、文件存储服务及其他有状态服务。',
 )
 
+FUNCTIONAL_CHECKLIST = [
+    "- [ ] 打开工作表，创建/编辑记录",
+    "- [ ] 触发工作流，检查执行情况",
+    "- [ ] 检查统计图、报表等功能",
+    "- [ ] 检查附件上传、下载和预览功能",
+]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -142,6 +149,47 @@ def main() -> int:
             errors.append("集群升级前准备的授权和前端二开章节必须各出现一次，不能缺失或重复")
         if "请参考官方备份与部署文档执行备份" in text or "https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup" in text:
             errors.append("集群数据备份不得套用单机备份说明或单机备份链接")
+
+    # 第三阶段只允许收录升级完成后的变更/附加操作，不能混入验证。
+    phase3_start = next((i for i, line in enumerate(lines) if line.startswith("### 第三阶段：")), None)
+    if phase3_start is not None:
+        phase3_end = next(
+            (i for i in range(phase3_start + 1, len(lines)) if lines[i].startswith("## ")),
+            len(lines),
+        )
+        phase3_text = "\n".join(lines[phase3_start:phase3_end])
+        for token in ("确认服务状态", "检查HAP微服务容器日志", "登录系统确认版本", "功能验证"):
+            if token in phase3_text:
+                errors.append(f"第三阶段不得包含验证内容：{token}；请移入升级后验证")
+        versioned_change = any(
+            line.startswith("#### ") and ("来自 v" in line or "数据库中执行 DDL" in line)
+            for line in lines[phase3_start:phase3_end]
+        )
+        if not versioned_change:
+            errors.append("第三阶段没有真实的版本后置变更；无变更时必须删除整个第三阶段及其入口步骤")
+
+    # 功能验证是固定清单，禁止因模式或版本不同而增删验证项。
+    functional_heading = next(
+        (i for i, line in enumerate(lines) if re.match(r"^#### \d+\. 功能验证$", line)),
+        None,
+    )
+    if functional_heading is None:
+        errors.append("缺少固定的“功能验证”模块")
+    else:
+        functional_end = next(
+            (i for i in range(functional_heading + 1, len(lines)) if re.match(r"^#{1,4} ", lines[i])),
+            len(lines),
+        )
+        functional_lines = lines[functional_heading:functional_end]
+        actual_checklist = [line.strip() for line in functional_lines if line.strip().startswith("- [ ]")]
+        if actual_checklist != FUNCTIONAL_CHECKLIST:
+            errors.append(
+                "功能验证必须且只能按固定顺序保留四项：工作表、工作流、统计图/报表、附件上传/下载/预览"
+            )
+        forbidden_functional_tokens = ("AI Agent", "SSE", "长连接", "外层代理", "外部代理")
+        for token in forbidden_functional_tokens:
+            if token in "\n".join(functional_lines):
+                errors.append(f"功能验证禁止追加项目：{token}")
 
     # 第二阶段的固定步骤必须保持对应模板的 h4 层级，防止生成器降级标题。
     if args.mode == "single":
