@@ -150,6 +150,47 @@ def main() -> int:
         if "请参考官方备份与部署文档执行备份" in text or "https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup" in text:
             errors.append("集群数据备份不得套用单机备份说明或单机备份链接")
 
+    # “检查资源”必须遵守 WorkBuddy 的单机/集群固定结构。
+    try:
+        resource_start = lines.index("### 5. 检查资源")
+        resource_end = next(
+            (i for i in range(resource_start + 1, len(lines)) if re.match(r"^###? ", lines[i])),
+            len(lines),
+        )
+        resource_text = "\n".join(lines[resource_start:resource_end])
+        if args.mode == "single":
+            required_tokens = (
+                "确保磁盘空间充足（建议预留 40GB 以上）",
+                "建议在升级前记录以下现场信息",
+                "当前 HAP、存储组件、MySQL、MongoDB 等容器名称和状态",
+                "当前 `docker-compose.yaml` 中 HAP 镜像标签、数据目录挂载和外部代理相关配置",
+                "当前系统登录地址、组织授权状态以及前端二次开发发布状态",
+                "备份文件的实际保存位置、文件名和完整性校验结果",
+                "所有默认路径都必须以现场实际配置为准",
+            )
+            for token in required_tokens:
+                if token not in resource_text:
+                    errors.append(f"单机检查资源缺少 WorkBuddy 固定内容：{token}")
+            if any(marker in text for marker in ("离线", "offline", "Offline")):
+                for token in (
+                    "确认目标 HAP 离线镜像已经通过 `docker images` 校验",
+                    "确认 `preset_mongodb_docker.sh` 与 `preset_mongodb_",
+                    "确认已安排升级窗口，升级过程中不要在 HAP 服务上执行其他变更",
+                ):
+                    if token not in resource_text:
+                        errors.append(f"单机离线检查资源缺少固定内容：{token}")
+        else:
+            required_bullets = [
+                "- 确认各节点磁盘空间充足",
+                "- 确认控制节点可正常执行 `kubectl` 命令",
+                "- 若计划使用滚动更新，确认各微服务节点有 **40% 左右的可用内存**（不满足则使用非滚动更新）",
+            ]
+            actual_bullets = [line.strip() for line in lines[resource_start:resource_end] if line.strip().startswith("-")]
+            if actual_bullets != required_bullets:
+                errors.append("集群检查资源必须且只能保留 WorkBuddy 固定的三项，不能增删或改写")
+    except ValueError:
+        errors.append("缺少规定标题：### 5. 检查资源")
+
     # 第三阶段只允许收录升级完成后的变更/附加操作，不能混入验证。
     phase3_start = next((i for i, line in enumerate(lines) if line.startswith("### 第三阶段：")), None)
     if phase3_start is not None:
