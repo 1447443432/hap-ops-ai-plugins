@@ -10,6 +10,7 @@
 - 当前 skills：
   - `plugins/hap-ops-ai-plugins/skills/hap-upgrade-guide/`
   - `plugins/hap-ops-ai-plugins/skills/hap-private-document-release/`
+  - `plugins/hap-ops-ai-plugins/skills/utf8-safe-write/`
 
 ## 安装
 
