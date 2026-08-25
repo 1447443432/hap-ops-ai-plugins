@@ -8,6 +8,8 @@
 - `skills/hap-private-document-release/`：HAP Private Document Jenkins 构建、微服务工作表发布申请和结果核验 SOP。
 - `skills/utf8-safe-write/`：Windows PowerShell/Git 项目中的 UTF-8、BOM 和换行安全编辑规范。
 - `skills/ponytail/`：编码任务的最小实现、YAGNI 和反过度设计约束。
+- `skills/hap-delivery-docs/`：HAP 私有部署交付文档套件生成。
+- `skills/hap-deployment-troubleshooter/`：HAP 私有部署故障排查和实战案例。
 
 ## 扩展其他 skill
 
