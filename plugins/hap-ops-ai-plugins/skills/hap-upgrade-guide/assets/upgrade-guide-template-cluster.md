@@ -8,7 +8,15 @@
 | **部署模式** | 集群模式（Kubernetes） |
 | **服务器架构** | {AMD64 / ARM64} |
 | **服务器网络** | {可访问互联网 / 离线} |
+<!-- 仅当用户明确指定的关系型数据库不是 MySQL 时保留此行；同时在正文保留数据库类型说明。 -->
+| **关系型数据库** | {OceanBase / 达梦 / 人大金仓} |
 | **文档生成日期** | {YYYY-MM-DD} |
+
+<!-- 只填写 /version 总表中标记“含附加操作”的版本；未标记版本不列入正文。 -->
+本次升级正文仅展示标记“含附加操作”的版本：{按 /version 总表从低到高填写动作版本}；其他版本不展示，也不增加额外操作。
+
+<!-- 仅当关系型数据库不是 MySQL 时保留此说明，并将数据库类型替换为现场实际类型。 -->
+> ⚠️ **数据库类型说明**：本文档的关系型数据库 DDL 变更操作针对 **{数据库类型}** 数据库，非 MySQL 默认语法。请使用对应的数据库客户端工具执行。
 
 ---
 
@@ -30,7 +38,6 @@ crictl pull registry.cn-hangzhou.aliyuncs.com/mdpublic/mingdaoyun-hap:{目标版
 # 如本次升级步骤实际需要其他镜像，则继续拉取
 # crictl pull registry.cn-hangzhou.aliyuncs.com/mdpublic/mingdaoyun-doc:{文档预览版本号}
 # crictl pull registry.cn-hangzhou.aliyuncs.com/mdpublic/mingdaoyun-ldoc:{文档预览扩展版本号}
-# crictl pull registry.cn-hangzhou.aliyuncs.com/mdpublic/mingdaoyun-sc:{存储组件版本号}
 ```
 
 ```bash
@@ -53,11 +60,12 @@ crictl images | grep mingdaoyun
 <!-- 以下行仅在本次升级路径中至少一个版本的升级详情页明确要求对应组件升级时才取消注释并填写：
 | 文档预览服务离线包 | 见 SKILL.md §4 下载地址规范 |
 | 文档预览扩展服务（ldoc）离线包 | 见 SKILL.md §4 下载地址规范 |
-| 文件存储服务离线包（**二选一**，根据当前 file 版本选择） | 见 SKILL.md §5 下载地址规范（必须合并为一行两链接，标注二选一）|
+| 文件存储服务离线包 — file v1 系列（**二选一**，根据当前 file 版本选择） | 见 SKILL.md §5 下载地址规范 |
+| 文件存储服务离线包 — file v2 系列（**二选一**，根据当前 file 版本选择） | 见 SKILL.md §5 下载地址规范 |
 -->
 | MongoDB 预置数据包（若本次升级涉及该操作，否则删除此行） | {填写对应版本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_{版本}.tar.gz} |
 | MongoDB 预置脚本（若本次升级涉及该操作，否则删除此行） | {填写对应脚本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_k8s.sh} |
-| 预置文件（若本次升级涉及 fileInit，离线时需提前下载，否则删除此行） | https://pdpublic.mingdao.com/private-deployment/data/preset_file_{含fileInit的最高版本号}.tar.gz（版本号根据升级路径实际扫描确定，详见 SKILL.md §6） |
+| 预置文件（若本次升级涉及 fileInit，离线时需提前下载，否则删除此行） | https://pdpublic.mingdao.com/private-deployment/source/{含fileInit的最高版本号}/file_init.tar.gz |
 
 在对应节点按实际需要导入或校验资源。例如：
 
@@ -97,7 +105,8 @@ crictl images | grep mingdaoyun
 
 > ⚠️ **升级前必须完成备份，此步骤不可跳过。**
 
-对数据存储相关的服务器进行备份，确保以下组件的数据均已备份：MongoDB、文件存储服务及其他有状态服务。
+<!-- 将 {关系型数据库名称} 替换为现场实际数据库名称；若现场无关系型数据库，删除该占位项及其前后一个顿号。 -->
+对数据存储相关的服务器进行备份，确保以下组件的数据均已备份：MongoDB、{关系型数据库名称}、文件存储服务及其他有状态服务。
 
 ### 4. 确认当前版本
 
@@ -306,6 +315,7 @@ kubectl get pod -n default
 
 > ⚠️ **特别注意**：以下内容只包含 HAP 微服务升级完成后的变更/附加操作；服务状态、Pod 状态、日志、版本和业务功能检查统一放在“升级后验证”。
 
+<!-- 仅当存在需要在 config Pod 内执行的 MongoDB/fileInit 等后置操作时保留本入口；若本次仅有非 MySQL 关系型数据库 DDL，删除本入口。 -->
 #### 1. 进入 config Pod 执行脚本
 
 在控制节点执行以下命令进入 config Pod：
@@ -351,7 +361,7 @@ docker service ls | grep file
 docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' $(docker service ls --filter name=file -q)
 ```
 
-根据版本号确认存储模式后，**回到 config Pod**（已在第 1 步进入），**三选一**执行：
+根据版本号确认存储模式后，**回到 config Pod**（已在第 1 步进入）执行情况 1/2；情况 3 不在 config Pod 内执行初始化命令，仅查看官方 OSS 文档：
 
 **情况 1：内置文件存储（mingdaoyun-file 1.x.x，file v1 模式）**
 
@@ -369,8 +379,7 @@ source /entrypoint-cluster.sh && s3fileInit
 
 **情况 3：外部文件对象存储（S3 标准协议，如阿里云 OSS、AWS S3 等，mingdaoyun-file 2.x.x，file v2 模式）**
 
-> 此情况需手动下载预置文件包并上传到对象存储 bucket 中，请参考官方文档操作：
-> [https://docs-pd.mingdao.com/hap/faq/oss](https://docs-pd.mingdao.com/hap/faq/oss)
+官方文档：[https://docs-pd.mingdao.com/hap/faq/oss](https://docs-pd.mingdao.com/hap/faq/oss)
 
 **2.2 MongoDB 新增索引**
 
@@ -379,8 +388,23 @@ source /entrypoint.sh && mongodbExecute {库名1} /init/mongodb/{版本号}/{库
 source /entrypoint.sh && mongodbExecute {库名2} /init/mongodb/{版本号}/{库名2}/DDL.txt
 ```
 
+<!-- MySQL 分支：仅当关系型数据库为 MySQL，且官方详情明确要求在 config Pod 内执行时保留；OceanBase/其他非 MySQL 数据库删除此代码块。 -->
 ```bash
-mysql -h $ENV_MYSQL_HOST -P $ENV_MYSQL_PORT -u$ENV_MYSQL_USERNAME -p$ENV_MYSQL_PASSWORD --default-character-set=utf8 -N < /init/mysql/{版本号}/DDL.sql
+{仅 MySQL 场景：从本次官方详情页完整填入命令；非 MySQL 场景删除本代码块}
+```
+
+#### {N}. 在{数据库类型}数据库中执行 DDL 变更
+
+> ⚠️ **此步骤不在 config Pod 内执行**。请在数据库服务器或可访问数据库的运维机上执行，并将连接地址、端口、租户、用户名、密码和数据库名替换为现场实际值。
+
+OceanBase 使用 MySQL 兼容模式的 `obclient`，示例：
+
+```bash
+obclient -h {数据库服务器IP} -P {端口} -u "{用户名}@{租户名}" -p"{密码}" -D {数据库名} < {官方SQL文件路径}.sql
+```
+
+```sql
+{从官方数据库变更 SQL 页面按来源版本从低到高填入对应数据库 DDL；不得用 MySQL DDL 代替}
 ```
 
 ---
@@ -415,6 +439,7 @@ kubectl get pods -n default
 - [ ] 打开工作表，创建/编辑记录
 - [ ] 触发工作流，检查执行情况
 - [ ] 检查统计图、报表等功能
+- [ ] 检查附件上传、下载和预览功能
 - [ ] 检查附件上传、下载和预览功能
 
 ---

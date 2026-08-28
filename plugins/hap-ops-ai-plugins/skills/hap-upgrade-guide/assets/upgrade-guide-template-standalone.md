@@ -8,7 +8,15 @@
 | **部署模式** | 单机模式（Docker Compose） |
 | **服务器架构** | {AMD64 / ARM64} |
 | **服务器网络** | {可访问互联网 / 离线} |
+<!-- 仅当用户明确指定的关系型数据库不是 MySQL 时保留此行；同时在正文保留数据库类型说明。 -->
+| **关系型数据库** | {OceanBase / 达梦 / 人大金仓} |
 | **文档生成日期** | {YYYY-MM-DD} |
+
+<!-- 只填写 /version 总表中标记“含附加操作”的版本；未标记版本不列入正文。 -->
+本次升级正文仅展示标记“含附加操作”的版本：{按 /version 总表从低到高填写动作版本}；其他版本不展示，也不增加额外操作。
+
+<!-- 仅当关系型数据库不是 MySQL 时保留此说明，并将数据库类型替换为现场实际类型。 -->
+> ⚠️ **数据库类型说明**：本文档的关系型数据库 DDL 变更操作针对 **{数据库类型}** 数据库，非 MySQL 默认语法。请使用对应的数据库客户端工具执行。
 
 ---
 
@@ -49,7 +57,7 @@ docker pull registry.cn-hangzhou.aliyuncs.com/mdpublic/mingdaoyun-hap:{目标版
 -->
 | MongoDB 预置数据包（若本次升级涉及该操作，否则删除此行） | `{填写对应版本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_{版本}.tar.gz}` |
 | MongoDB 预置脚本（若本次升级涉及该操作，否则删除此行） | `{填写对应脚本下载链接，例如 https://pdpublic.mingdao.com/private-deployment/data/preset_mongodb_docker.sh}` |
-| 外部文件对象存储预置文件包（仅外部 S3/OSS/COS/OBS 时执行；若本次升级不涉及则删除此行） | `https://pdpublic.mingdao.com/private-deployment/data/preset_file_{含fileInit的最高版本号}.tar.gz` |
+| 外部文件对象存储预置文件包（仅外部 S3/OSS/COS/OBS 时执行；若本次升级不涉及则删除此行） | https://pdpublic.mingdao.com/private-deployment/source/{含fileInit的最高版本号}/file_init.tar.gz |
 
 上传到服务器后，按实际需要导入或校验资源。例如：
 
@@ -61,13 +69,15 @@ docker load -i {目标HAP微服务离线包文件名}.tar.gz
 docker images
 ```
 
+> 💡 **关于预置文件（fileInit）**：若您的部署使用**外部文件对象存储**（S3 标准协议，如阿里云 OSS、AWS S3 等），还需重新初始化预置文件。离线环境下请提前下载预置文件包 `file_init.tar.gz`（下载链接见“提前准备”），并参考官方文档 [自定义文件对象存储](https://docs-pd.mingdao.com/hap/faq/oss) 完成操作。若使用内置文件存储或 MinIO，无需此步骤。
+
 ---
 
 ## 升级前准备
 
 ### 1. 授权有效期检查
 
-> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。若目标版本的发布日期（**{与上方「目标版本发布日期」一致，如 v7.3.6 的 2026-07-02}**）晚于授权到期日，强行升级将触发系统受限提示，并导致授权自动降级为免费版。建议在升级前确认版本发布日期与授权期限的匹配情况。
+> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。若目标版本（**{与上方「目标版本发布日期」一致，如 v7.3.6 的 2026-07-02}**）晚于授权到期日，强行升级将触发系统受限提示，并导致授权自动降级为免费版。建议在升级前确认版本发布日期与授权期限的匹配情况。
 
 请检查您的授权密钥是否仍在"升级服务"有效期内，并确认授权到期日晚于目标版本发布日期。若授权即将到期或已过期，请联系明道云商务团队续期后再执行升级。
 
@@ -87,8 +97,7 @@ docker images
 
 > ⚠️ **升级前必须完成备份，此步骤不可跳过。**
 
-请参考官方文档完成数据备份：
-https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup
+请参考官方文档完成数据备份：[数据备份文档](https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup)
 
 ### 4. 确认当前版本
 
@@ -110,7 +119,7 @@ docker ps --format "table {{.Image}}\t{{.Names}}"
 
 建议在升级前记录以下现场信息，便于出现异常时与升级前状态对比：
 
-- 当前 HAP、存储组件、MySQL、MongoDB 等容器名称和状态
+- 当前 HAP、存储组件、{关系型数据库名称}、MongoDB 等容器名称和状态
 - 当前 `docker-compose.yaml` 中 HAP 镜像标签、数据目录挂载和外部代理相关配置
 - 当前系统登录地址、组织授权状态以及前端二次开发发布状态
 - 备份文件的实际保存位置、文件名和完整性校验结果
@@ -259,7 +268,7 @@ bash ./service.sh restartall
 docker exec -it $(docker ps | grep -E 'mingdaoyun-community|mingdaoyun-hap' | awk '{print $1}') bash
 ```
 
-> 💡 如曾自定义过 MySQL 用户名、密码，注意修改命令中对应参数值（默认：用户名 `root`，密码 `123456`）。
+> 💡 如本文档包含关系型数据库命令，注意将数据库类型、连接地址、端口、租户、用户名和密码替换为现场实际值。
 
 在容器内按版本**从低到高**顺序执行以下操作：
 
@@ -272,12 +281,13 @@ docker exec -it $(docker ps | grep -E 'mingdaoyun-community|mingdaoyun-hap' | aw
      注意：该步骤中禁止出现 docker exec -it $(docker ps | grep mingdaoyun...) 进入 HAP 容器的命令
 -->
 
-#### 2. 来自 v{版本号}：{功能说明，例如：MySQL 新增索引}
+#### 2. 来自 v{版本号}：{功能说明，例如：关系型数据库新增索引}
 
 {仅保留实际存在的操作}
 
+<!-- MySQL 分支：仅当关系型数据库为 MySQL，且官方详情明确要求在 HAP 微服务容器内执行时保留；OceanBase/其他非 MySQL 数据库删除此分支。 -->
 ```bash
-mysql -h sc -P 3306 -uroot -p123456 --default-character-set=utf8 -N < /init/mysql/{版本号}/DDL.sql
+{仅 MySQL 场景：从本次官方详情页完整填入命令；非 MySQL 场景删除本代码块}
 ```
 
 **2.1 执行预置数据脚本**
@@ -286,15 +296,29 @@ mysql -h sc -P 3306 -uroot -p123456 --default-character-set=utf8 -N < /init/mysq
 source /entrypoint.sh && /init/script/{版本号}/preset.sh
 ```
 
-**2.2 MySQL 新增索引**
+**2.2 关系型数据库新增索引（仅 MySQL 容器内分支）**
 
 ```bash
-mysql -h sc -P 3306 -uroot -p123456 --default-character-set=utf8 -N < /init/mysql/{版本号}/DDL.sql
+{仅 MySQL 场景：从本次官方详情页完整填入命令；非 MySQL 场景删除本代码块}
 ```
 
 ```bash
-mysql -h sc -P 3306 -uroot -p123456 --default-character-set=utf8 -N < /init/mysql/{版本号}/DDL_1.sql
-mysql -h sc -P 3306 -uroot -p123456 --default-character-set=utf8 -N < /init/mysql/{版本号}/DDL_2.sql
+{仅 MySQL 场景：从本次官方详情页完整填入全部命令；非 MySQL 场景删除本代码块}
+```
+
+<!-- 非 MySQL 关系型数据库分支：不得进入 HAP 微服务容器，必须单独编号并在数据库服务器或运维机执行。 -->
+#### {N}. 在{数据库类型}数据库中执行 DDL 变更
+
+> ⚠️ **此步骤不在 HAP 微服务容器内执行**。请将连接地址、端口、租户、用户名、密码和数据库名替换为现场实际值。
+
+OceanBase 使用 MySQL 兼容模式的 `obclient`，示例：
+
+```bash
+obclient -h {数据库服务器IP} -P {端口} -u "{用户名}@{租户名}" -p"{密码}" -D {数据库名} < {官方SQL文件路径}.sql
+```
+
+```sql
+{从官方数据库变更 SQL 页面按来源版本从低到高填入对应数据库 DDL；不得用 MySQL DDL 代替}
 ```
 
 ---

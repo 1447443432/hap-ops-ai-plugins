@@ -34,7 +34,7 @@ CLUSTER_HEADINGS = [
     "### 5. 检查资源",
 ]
 
-# 集群前三项必须复用 WorkBuddy 集群成品的完整文案；目标发布日期所在行允许被生成器替换。
+# 集群升级前准备必须复用 WorkBuddy 集群成品的固定结构；数据库名称按现场实际情况替换。
 CLUSTER_PREP_EXACT_LINES = (
     '> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。若目标版本（**',
     '请检查您的授权密钥是否仍在"升级服务"有效期内，并确认授权到期日晚于目标版本发布日期。若授权即将到期或已过期，请联系明道云商务团队续期后再执行升级。',
@@ -44,7 +44,10 @@ CLUSTER_PREP_EXACT_LINES = (
     '2. 将自定义的二开代码合并（merge）进最新基础代码，处理可能存在的冲突',
     '3. 构建并发布更新后的前端服务，使新版本前端生效',
     '若系统中**没有**前端二次开发，忽略本注意事项。',
-    '对数据存储相关的服务器进行备份，确保以下组件的数据均已备份：MongoDB、文件存储服务及其他有状态服务。',
+)
+
+CLUSTER_BACKUP_PATTERN = re.compile(
+    r"对数据存储相关的服务器进行备份，确保以下组件的数据均已备份：MongoDB、(?:[^。\n]+、)?文件存储服务及其他有状态服务。"
 )
 
 FUNCTIONAL_CHECKLIST = [
@@ -142,6 +145,8 @@ def main() -> int:
         for required_line in CLUSTER_PREP_EXACT_LINES:
             if required_line not in text:
                 errors.append(f"集群升级前准备必须与 WorkBuddy 集群成品逐条一致，缺少固定文案：{required_line}")
+        if not CLUSTER_BACKUP_PATTERN.search(text):
+            errors.append("集群数据备份必须保留 WorkBuddy 固定句式，并按现场实际情况写明关系型数据库名称")
         auth_lines = [line for line in lines if line.startswith('> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。若目标版本（**')]
         if len(auth_lines) != 1:
             errors.append("集群授权有效期检查必须保留 WorkBuddy 集群成品的完整重要提示，不能压缩或改写")
@@ -149,6 +154,38 @@ def main() -> int:
             errors.append("集群升级前准备的授权和前端二开章节必须各出现一次，不能缺失或重复")
         if "请参考官方备份与部署文档执行备份" in text or "https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup" in text:
             errors.append("集群数据备份不得套用单机备份说明或单机备份链接")
+        case3_start = next(
+            (i for i, line in enumerate(lines) if line.startswith("**情况 3：外部文件对象存储")),
+            None,
+        )
+        if case3_start is not None:
+            case3_end = next(
+                (i for i in range(case3_start + 1, len(lines)) if lines[i].startswith("#### ")),
+                len(lines),
+            )
+            case3_text = "\n".join(lines[case3_start:case3_end])
+            if "https://docs-pd.mingdao.com/hap/faq/oss" not in case3_text:
+                errors.append("集群 fileInit 情况 3 必须保留官方 OSS 文档链接")
+            if "```" in case3_text:
+                errors.append("集群 fileInit 情况 3 只允许保留官方 OSS 文档链接，不得生成代码块")
+            forbidden_case3_tokens = (
+                "mc alias",
+                "mc cp",
+                "ossutil",
+                "aws s3 cp",
+                "coscmd",
+                "s3cmd",
+                "rclone",
+                "bucket 上传",
+                "endpoint",
+                "region",
+                "accesskey",
+                "secretkey",
+            )
+            case3_lower = case3_text.lower()
+            for token in forbidden_case3_tokens:
+                if token in case3_lower:
+                    errors.append(f"集群 fileInit 情况 3 禁止生成上传命令或对象存储配置步骤：{token}")
 
     # “检查资源”必须遵守 WorkBuddy 的单机/集群固定结构。
     try:
@@ -162,7 +199,8 @@ def main() -> int:
             required_tokens = (
                 "确保磁盘空间充足（建议预留 40GB 以上）",
                 "建议在升级前记录以下现场信息",
-                "当前 HAP、存储组件、MySQL、MongoDB 等容器名称和状态",
+                "当前 HAP、存储组件、",
+                "、MongoDB 等容器名称和状态",
                 "当前 `docker-compose.yaml` 中 HAP 镜像标签、数据目录挂载和外部代理相关配置",
                 "当前系统登录地址、组织授权状态以及前端二次开发发布状态",
                 "备份文件的实际保存位置、文件名和完整性校验结果",
@@ -185,7 +223,11 @@ def main() -> int:
                 "- 确认控制节点可正常执行 `kubectl` 命令",
                 "- 若计划使用滚动更新，确认各微服务节点有 **40% 左右的可用内存**（不满足则使用非滚动更新）",
             ]
-            actual_bullets = [line.strip() for line in lines[resource_start:resource_end] if line.strip().startswith("-")]
+            actual_bullets = [
+                line.strip()
+                for line in lines[resource_start:resource_end]
+                if line.strip().startswith("-") and line.strip() != "---"
+            ]
             if actual_bullets != required_bullets:
                 errors.append("集群检查资源必须且只能保留 WorkBuddy 固定的三项，不能增删或改写")
     except ValueError:
@@ -278,6 +320,8 @@ def main() -> int:
         for line in lines:
             if line.startswith("### 第一阶段："):
                 phase = "before"
+            elif line.startswith("### 第二阶段："):
+                phase = None
             elif line.startswith("### 第三阶段："):
                 phase = "after"
             elif line.startswith("## "):

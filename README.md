@@ -14,6 +14,7 @@
   - `hap-deployment-troubleshooter`：HAP 私有部署故障排查和实战案例分析。
   - `hap-mongodb-slowlog-analysis`：MongoDB 4.4.x 慢日志分析、索引建议和可执行命令生成。
   - `github-image-workflow-builder`：创建、修复和验证 amd64/arm64 GitHub Actions 镜像构建、Release、镜像推送和 HAP Webhook Workflow。
+  - `nginx-https-cert-rotation`：按 Nginx 安装路径、配置文件和证书路径生成 HTTPS 证书更换、校验与回滚手册。
   - `utf8-safe-write`：Windows PowerShell/Git 项目的 UTF-8、BOM 和换行安全编辑。
   - `ponytail`：编码任务的最小实现、YAGNI 和反过度设计约束。
 

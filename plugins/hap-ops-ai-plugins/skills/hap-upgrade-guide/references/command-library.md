@@ -8,7 +8,7 @@
 - 模板中出现的 `{命名空间}`、`{目标版本号}`、`{目标存储组件版本号}` 等占位内容，最终输出前必须替换成实际值
 - 提前准备阶段要汇总**本次升级实际会用到的全部资源**，不要默认只有 HAP 微服务镜像
 - 离线文件清单只保留本次升级真正需要的文件。未出现在升级路径中任何一个版本详情页的组件离线包（如 doc/ldoc/file 存储服务），**禁止**列入清单。禁止推断式添加
-- 如果线上文档中的附加操作指向其他页面，本文件只提供命令模式参考；最终文档仍应以实际打开后的页面内容为准并展开步骤
+- 如果线上文档中的附加操作指向其他页面，本文件只提供命令模式参考；最终文档仍应以实际打开后的页面内容为准并展开步骤。**集群 fileInit 情况 3（外部文件对象存储）是例外，最终文档只保留官方 OSS 文档链接，不展开厂商上传命令。**
 
 ## 1. 镜像拉取 / 导入（根据网络情况）
 
@@ -97,24 +97,20 @@ bash -c "$(curl -fsSL https://pdpublic.mingdao.com/private-deployment/data/prese
 
 > 若跨版本升级中包含多次 fileInit 操作，仅需执行最新版本的相应操作即可（与 MongoDB 预置数据合并规则一致）。
 
-### URL 规律
-```
-https://pdpublic.mingdao.com/private-deployment/data/preset_file_{版本号}.tar.gz
-```
-- `{版本号}` 取升级路径中含 fileInit 操作的**最高版本号**（不带 `v` 前缀）
-- 详见 SKILL.md §6「预置文件（preset_file）下载地址规范」
+### 官方来源与 URL
+
+- 仅当动作版本详情明确要求 `fileInit`，且离线或外部对象存储场景确实需要时，读取官方说明页：`https://docs-pd.mingdao.com/hap/faq/oss`
+- 以该官方页面“预置文件包”实际返回的文件名和 URL 为准。当前页面对应 v7.3.0 的实际资源为：`https://pdpublic.mingdao.com/private-deployment/source/7.3.0/file_init.tar.gz`
+- `{版本号}` 取升级路径中含 fileInit 操作的**最高版本号**（不带 `v` 前缀）；生成前必须重新访问并验证同一 URL，禁止凭记忆拼接旧的 `preset_file` 地址。
 
 ### 离线场景
-1. 提前下载预置文件：`https://pdpublic.mingdao.com/private-deployment/data/preset_file_{该操作涉及的最新版本号}.tar.gz`
-2. 上传至服务器
-3. 在 config Pod 内执行（集群模式）：
-   - 内置存储（file v1）：`source /entrypoint-cluster.sh && fileInit`
-   - MinIO/S3（file v2）：`source /entrypoint-cluster.sh && s3fileInit`
-   - 外部对象存储（S3 标准协议）：手动上传 preset_file 包到对象存储 bucket
+1. 提前下载官方页面实际返回的 `file_init.tar.gz`，并上传至服务器。
+2. 在集群模式按 file 版本判断：内置存储（file v1）执行 `source /entrypoint-cluster.sh && fileInit`；MinIO/S3（file v2）执行 `source /entrypoint-cluster.sh && s3fileInit`。
+3. 外部对象存储（S3 标准协议）：最终文档仅提供官方 OSS 配置页链接，不在 HAP 容器或 config Pod 内生成初始化、bucket 上传或 endpoint 配置命令。
 
 ### 联网场景
-- 情况 1/2：fileInit / s3fileInit 命令在容器内直接执行，自动拉取预置文件，无需提前下载
-- 情况 3（外部 S3）：仍需手动下载 preset_file 包并上传到对象存储 bucket
+- 内置存储或 MinIO/S3 标准对象存储：在相应容器或 config Pod 内执行 `fileInit` / `s3fileInit`，按官方说明自动获取预置文件。
+- 外部对象存储：最终文档仅保留官方 OSS 配置页链接；不生成上传命令。
 
 ---
 
@@ -218,7 +214,7 @@ tools/md2html/md2html(.exe) -input {Markdown文件路径} -output {HTML输出路
 
 > 当用户指定使用非 MySQL 关系型数据库时，升级后操作中的 DDL 执行命令需替换为对应数据库的命令行工具。以下为各数据库的连接命令模板。
 >
-> **DDL 内容来源**：通过 hap CLI 查询明道云工作表获取（详见 SKILL.md「关系型数据库变更 DDL（非 MySQL 场景）」章节），**禁止**直接使用 MySQL DDL 语法。
+> **DDL 内容来源**：通过本次官方对外公开的数据库变更 SQL 页面获取：`https://meihua.mingdao.com/public/view/6a59bb1b3b43b911ab153690`（仅在路径确实包含关系型数据库 DDL 时读取），**禁止**使用旧文档、缓存或 MySQL DDL 冒充其他数据库语法。
 
 ### 达梦 DM
 
