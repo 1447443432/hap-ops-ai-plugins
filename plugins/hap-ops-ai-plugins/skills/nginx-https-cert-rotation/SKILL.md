@@ -148,7 +148,8 @@ metadata:
 
 ## 官方参考
 
-- [如何配置代理 | HAP 私有部署](https://docs-pd.mingdao.com/deployment/proxy/nginx_default/)
-- [HTTPS | HAP 私有部署](https://docs-pd.mingdao.com/deployment/proxy/https/)
+- [如何配置代理 | HAP 私有部署](https://docs-pd.mingdao.com/hap/deployment/proxy/nginx_default/)
+- [HTTPS | HAP 私有部署](https://docs-pd.mingdao.com/hap/deployment/proxy/https/)
 
+HAP 官方文档使用 `/hap/` 前缀，生成手册时保留上面的完整地址，不要遗漏 `/hap/`，也不要把它误写成 `/deployment/proxy/hap/...`。
 这些链接只用于 HAP 代理和 HTTPS 上下文参考，不要把官方示例路径或特定版本的 Nginx 下载命令当成用户服务器的事实。

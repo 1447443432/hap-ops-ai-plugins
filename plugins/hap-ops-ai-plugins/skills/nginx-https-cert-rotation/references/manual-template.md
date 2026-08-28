@@ -205,5 +205,7 @@ cp -p -- <ssl_certificate_key>.YYYYMMDDHHMMSS.bak <ssl_certificate_key>
 
 ## 参考文档
 
-- [如何配置代理 | HAP 私有部署](https://docs-pd.mingdao.com/deployment/proxy/nginx_default/)
-- [HTTPS | HAP 私有部署](https://docs-pd.mingdao.com/deployment/proxy/https/)
+- [如何配置代理 | HAP 私有部署](https://docs-pd.mingdao.com/hap/deployment/proxy/nginx_default/)
+- [HTTPS | HAP 私有部署](https://docs-pd.mingdao.com/hap/deployment/proxy/https/)
+
+说明：HAP 官方文档使用 `/hap/` 前缀，请保留上面的完整地址，不要遗漏 `/hap/`，也不要把它误写成 `/deployment/proxy/hap/...`。
