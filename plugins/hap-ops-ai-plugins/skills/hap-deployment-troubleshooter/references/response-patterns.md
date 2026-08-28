@@ -39,7 +39,7 @@
 这类问题先不要直接按经验处理，先核对升级路径和附加操作。
 
 建议顺序：
-1. 到 [版本页](https://docs-pd.mingdao.com/version) 确认你的目标版本和发布日期
+1. 到 [版本页](https://docs-pd.mingdao.com/hap/version) 确认你的目标版本和发布日期
 2. 打开对应的升级详情页检查是否有附加操作
 3. 再对照当前部署模式的升级文档核验实际执行步骤
 ```
@@ -66,7 +66,7 @@
 先区分是"排队量大但仍在消费"，还是"一直排队完全不消费"。
 
 官方页面：
-- [工作流持续排队](https://docs-pd.mingdao.com/faq/troubleshooting/workflow-keeps-queuing/)
+- [工作流持续排队](https://docs-pd.mingdao.com/hap/faq/troubleshooting/workflow-keeps-queuing/)
 
 建议执行顺序：
 1. 看工作流监控页，确认是否有单个流程排队数异常高。

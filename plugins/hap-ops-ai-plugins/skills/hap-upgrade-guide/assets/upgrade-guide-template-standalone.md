@@ -88,7 +88,7 @@ docker images
 > ⚠️ **升级前必须完成备份，此步骤不可跳过。**
 
 请参考官方文档完成数据备份：
-https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup
+https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup
 
 ### 4. 确认当前版本
 
@@ -334,7 +334,7 @@ docker logs $(docker ps | grep -E 'mingdaoyun-community|mingdaoyun-hap' | awk '{
 
 ## 异常情况排查
 
-参考[服务运行状况检查](https://docs-pd.mingdao.com/faq/troubleshooting/service-status-check)文档对容器日志进行检查
+参考[服务运行状况检查](https://docs-pd.mingdao.com/hap/faq/troubleshooting/service-status-check)文档对容器日志进行检查
 
 ### 1. 容器日志检查
 
@@ -355,14 +355,14 @@ docker logs $(docker ps -a | grep mingdaoyun-sc | awk '{print $1}')
 ## 参考文档
 
 <!-- 始终保留 -->
-- [版本发布历史](https://docs-pd.mingdao.com/version)
-- [离线资源包](https://docs-pd.mingdao.com/deployment/offline)
-- [数据备份](https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup)
-- [微服务升级](https://docs-pd.mingdao.com/deployment/docker-compose/standalone/upgrade/hap)
-- [常见问题 FAQ](https://docs-pd.mingdao.com/faq/deployment)
+- [版本发布历史](https://docs-pd.mingdao.com/hap/version)
+- [离线资源包](https://docs-pd.mingdao.com/hap/deployment/offline)
+- [数据备份](https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup)
+- [微服务升级](https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/upgrade/hap)
+- [常见问题 FAQ](https://docs-pd.mingdao.com/hap/faq/deployment)
 <!-- 条件保留（仅当本次升级实际涉及该操作时取消注释）：
-- [MongoDB 预置数据更新](https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/preset/mongodb)
-- [存储组件升级](https://docs-pd.mingdao.com/deployment/docker-compose/standalone/upgrade/sc)
+- [MongoDB 预置数据更新](https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/preset/mongodb)
+- [存储组件升级](https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/upgrade/sc)
 -->
 
 ---

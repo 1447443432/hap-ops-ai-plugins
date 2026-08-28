@@ -3,7 +3,7 @@
 > [!CAUTION]
 > 本文件仅用于了解 URL 规律，其内部表格中的 ✅/❌ 标记和**发布日期极易过时**。
 > **严禁**直接将本文件中的兼容性数据或发布日期作为生成指南的依据。
-> **必须**以 `https://docs-pd.mingdao.com/version` 的实时页面内容为唯一准则。
+> **必须**以 `https://docs-pd.mingdao.com/hap/version` 的实时页面内容为唯一准则。
 
 
 **基础 URL**：`https://docs-pd.mingdao.com`

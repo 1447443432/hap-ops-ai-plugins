@@ -65,7 +65,7 @@ redis-cli -h $ENV_REDIS_HOST -p $ENV_REDIS_PORT -a $ENV_REDIS_PASSWORD --scan --
 ### 现象 / 场景
 集群版私有部署，用户忘记登录密码且未集成短信/邮件收不到验证码。集群版与单机版不同，验证码记录在 MongoDB 的 `mdservicedata.hk_service_log` 集合里，直接到 mongo shell 查。
 
-官方找回密码文档：https://docs-pd.mingdao.com/faq/function/forgotpwd
+官方找回密码文档：https://docs-pd.mingdao.com/hap/faq/function/forgotpwd
 
 ### 处理
 1. 登录 MongoDB shell。

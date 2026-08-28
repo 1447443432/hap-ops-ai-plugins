@@ -160,7 +160,7 @@ HAP 产品按月度发布功能版本、按季度发布稳定版本。建议客�
 
 升级前必须做完整数据备份，并在测试环境先行验证至少 1～2 周。
 
-关注 https://docs-pd.mingdao.com/version 获取版本更新日志与安全公告。
+关注 https://docs-pd.mingdao.com/hap/version 获取版本更新日志与安全公告。
 
 ## 6.3 文档归档建议
 

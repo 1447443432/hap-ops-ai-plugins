@@ -69,19 +69,19 @@
 故障处理 PDF：
 | key | 章节 | URL |
 |---|---|---|
-| faq_deployment | 部署问题 | https://docs-pd.mingdao.com/faq/deployment |
-| faq_servicecheck | 服务运行状况检查 | https://docs-pd.mingdao.com/faq/troubleshooting/service-status-check |
-| faq_workflow_queue | 工作流持续排队 | https://docs-pd.mingdao.com/faq/troubleshooting/workflow-keeps-queuing |
-| faq_icon | 图标不显示 | https://docs-pd.mingdao.com/faq/troubleshooting/icon-not-showing |
-| faq_page | 页面无法访问 | https://docs-pd.mingdao.com/faq/troubleshooting/page-not-accessible |
+| faq_deployment | 部署问题 | https://docs-pd.mingdao.com/hap/faq/deployment |
+| faq_servicecheck | 服务运行状况检查 | https://docs-pd.mingdao.com/hap/faq/troubleshooting/service-status-check |
+| faq_workflow_queue | 工作流持续排队 | https://docs-pd.mingdao.com/hap/faq/troubleshooting/workflow-keeps-queuing |
+| faq_icon | 图标不显示 | https://docs-pd.mingdao.com/hap/faq/troubleshooting/icon-not-showing |
+| faq_page | 页面无法访问 | https://docs-pd.mingdao.com/hap/faq/troubleshooting/page-not-accessible |
 
 服务器资源要求 PDF：
 | key | 章节 | URL |
 |---|---|---|
-| res_platform | 支持平台 | https://docs-pd.mingdao.com/deployment/platform |
-| res_component | 组件支持版本 | https://docs-pd.mingdao.com/deployment/component |
-| res_source | 服务器资源推荐 | https://docs-pd.mingdao.com/deployment/source |
-| res_serverreqs | 服务器性能要求 | https://docs-pd.mingdao.com/deployment/server-reqs |
+| res_platform | 支持平台 | https://docs-pd.mingdao.com/hap/deployment/platform |
+| res_component | 组件支持版本 | https://docs-pd.mingdao.com/hap/deployment/component |
+| res_source | 服务器资源推荐 | https://docs-pd.mingdao.com/hap/deployment/source |
+| res_serverreqs | 服务器性能要求 | https://docs-pd.mingdao.com/hap/deployment/server-reqs |
 
 ## 离线安装包（pdpublic.mingdao.com，仅域名替换，内容不重排）
 

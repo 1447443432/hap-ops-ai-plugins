@@ -660,15 +660,15 @@ find /data/logs/weblogs/oldlogs -name "*.gz" -mtime +30 -delete
 
 原文链接：
 
-数据管理总览：https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/
+数据管理总览：https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/
 
-日志数据清理：https://docs-pd.mingdao.com/optimize/mongodb/clean/logArchive/
+日志数据清理：https://docs-pd.mingdao.com/hap/optimize/mongodb/clean/logArchive/
 
-应用行为日志归档：https://docs-pd.mingdao.com/optimize/mongodb/archive/actionlog/
+应用行为日志归档：https://docs-pd.mingdao.com/hap/optimize/mongodb/archive/actionlog/
 
-工作表行记录日志归档：https://docs-pd.mingdao.com/optimize/mongodb/archive/worksheetlog/
+工作表行记录日志归档：https://docs-pd.mingdao.com/hap/optimize/mongodb/archive/worksheetlog/
 
-工作流执行历史归档：https://docs-pd.mingdao.com/optimize/mongodb/archive/workflowlog/
+工作流执行历史归档：https://docs-pd.mingdao.com/hap/optimize/mongodb/archive/workflowlog/
 
 ### 6.2.1 概述
 
@@ -917,7 +917,7 @@ find /data/file/volume/tmp      -type f -mtime +1  -delete
 
 ## 7.1 HAP 微服务升级
 
-原文链接：https://docs-pd.mingdao.com/deployment/kubernetes/upgrade/hap
+原文链接：https://docs-pd.mingdao.com/hap/deployment/kubernetes/upgrade/hap
 
 ```text
 升级前注意事项

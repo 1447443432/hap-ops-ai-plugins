@@ -38,8 +38,8 @@ description: >-
 
 ## 实时核验顺序
 
-1. 抓取 `https://docs-pd.mingdao.com/version`，核验当前版本、目标版本发布日期、架构支持和跨版本路径。
-2. 按低版本到高版本逐个抓取 `https://docs-pd.mingdao.com/upgrade/{版本号}/`，不得只抓带标记的版本。
+1. 抓取 `https://docs-pd.mingdao.com/hap/version`，核验当前版本、目标版本发布日期、架构支持和跨版本路径。
+2. 按低版本到高版本逐个抓取 `https://docs-pd.mingdao.com/hap/upgrade/{版本号}/`，不得只抓带标记的版本。
 3. 完整读取每个版本的“升级说明”、注意框、折叠区域、配置、代码、列表、表格和参考链接；参考链接必须继续抓取并展开为可执行步骤。
 4. 按部署模式过滤操作：单机不得出现 `kubectl`、`crictl`、`ctr`；集群不得出现 `docker exec`、`docker-compose`、`service.sh restartall`。
 5. 任何页面抓取失败、页面为空或无法解析时，停止生成并报告原因，不得用记忆、旧缓存或旧产物补全。
@@ -68,7 +68,7 @@ description: >-
 - 单机现场基线必须记录：HAP/存储组件/MySQL/MongoDB 容器名称与状态、`docker-compose.yaml` 中 HAP 镜像标签/数据目录挂载/外部代理配置、系统登录地址/组织授权状态/前端二开发布状态、备份文件保存位置/文件名/完整性校验结果。
 - 单机数据备份只保留：
   `> ⚠️ **升级前必须完成备份，此步骤不可跳过。**`
-  和完整官方 URL：`https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup`。
+  和完整官方 URL：`https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup`。
 - 单机数据备份区域禁止出现 `docker exec`、`mongodump`、`backup mysql mongodb file` 或任何自定义备份命令。
 - 第一阶段附加操作标题必须是 `#### N. 来自 v{版本号}：{标题}`。
 - 第二阶段固定使用 `#### 1. 修改镜像版本号`、`#### 2. 重启服务`，不得降级为 h3。

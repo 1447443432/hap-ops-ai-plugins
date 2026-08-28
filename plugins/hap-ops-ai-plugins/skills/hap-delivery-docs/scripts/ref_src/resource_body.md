@@ -4,10 +4,10 @@
 
 内容来源：
 
-- 支持平台：https://docs-pd.mingdao.com/deployment/platform
-- 组件支持版本：https://docs-pd.mingdao.com/deployment/component
-- 服务器资源推荐：https://docs-pd.mingdao.com/deployment/source
-- 服务器性能要求：https://docs-pd.mingdao.com/deployment/server-reqs
+- 支持平台：https://docs-pd.mingdao.com/hap/deployment/platform
+- 组件支持版本：https://docs-pd.mingdao.com/hap/deployment/component
+- 服务器资源推荐：https://docs-pd.mingdao.com/hap/deployment/source
+- 服务器性能要求：https://docs-pd.mingdao.com/hap/deployment/server-reqs
 
 > 选型原则：从 v7.1.0 起 mingdaoyun-community 镜像改名 mingdaoyun-hap，历史镜像名不变。本文档涵盖单机模式与集群（精简/标准/专业/HyperScale）全部档次：生产环境优先集群模式，如必须单机建议内存 ≥ 48GB；严禁生产使用机械硬盘（HDD），统一 SSD、数据库节点优先 NVMe；CPU 主频 ≥ 2.5 GHz，建议近 5 年主流型号。
 

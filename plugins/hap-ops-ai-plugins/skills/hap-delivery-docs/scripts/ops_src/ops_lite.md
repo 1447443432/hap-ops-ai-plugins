@@ -414,13 +414,13 @@ find /data/logs/weblogs/oldlogs -name "*.gz" -mtime +30 -delete
 
 原文链接：
 
-数据管理总览：https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/
+数据管理总览：https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/
 
-应用行为日志归档：https://docs-pd.mingdao.com/optimize/mongodb/archive/actionlog/
+应用行为日志归档：https://docs-pd.mingdao.com/hap/optimize/mongodb/archive/actionlog/
 
-工作表行记录日志归档：https://docs-pd.mingdao.com/optimize/mongodb/archive/worksheetlog/
+工作表行记录日志归档：https://docs-pd.mingdao.com/hap/optimize/mongodb/archive/worksheetlog/
 
-工作流执行历史归档：https://docs-pd.mingdao.com/optimize/mongodb/archive/workflowlog/
+工作流执行历史归档：https://docs-pd.mingdao.com/hap/optimize/mongodb/archive/workflowlog/
 
 MongoDB 中的"日志类"数据会随业务运行长期累积，可用归档工具 mingdaoyun-archivetools 迁移到独立的归档库。精简版 MongoDB 为单实例，src 连接串为单节点地址（不含 replicaSet 参数）。
 
@@ -505,7 +505,7 @@ find /data/file/volume/tmp      -type f -mtime +1  -delete
 
 ## 7.1 HAP 微服务升级
 
-原文链接：https://docs-pd.mingdao.com/deployment/kubernetes/upgrade/hap
+原文链接：https://docs-pd.mingdao.com/hap/deployment/kubernetes/upgrade/hap
 
 ```text
 # 1. 拉取目标版本镜像（K8s 两节点都执行；离线则导入 tar）

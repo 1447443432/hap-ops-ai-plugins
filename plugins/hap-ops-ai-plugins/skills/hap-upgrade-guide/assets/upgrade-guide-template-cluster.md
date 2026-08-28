@@ -370,7 +370,7 @@ source /entrypoint-cluster.sh && s3fileInit
 **情况 3：外部文件对象存储（S3 标准协议，如阿里云 OSS、AWS S3 等，mingdaoyun-file 2.x.x，file v2 模式）**
 
 > 此情况需手动下载预置文件包并上传到对象存储 bucket 中，请参考官方文档操作：
-> [https://docs-pd.mingdao.com/faq/oss](https://docs-pd.mingdao.com/faq/oss)
+> [https://docs-pd.mingdao.com/hap/faq/oss](https://docs-pd.mingdao.com/hap/faq/oss)
 
 **2.2 MongoDB 新增索引**
 
@@ -422,13 +422,13 @@ kubectl get pods -n default
 ## 参考文档
 
 <!-- 始终保留 -->
-- [版本发布历史](https://docs-pd.mingdao.com/version)
-- [离线资源包](https://docs-pd.mingdao.com/deployment/offline)
-- [微服务升级](https://docs-pd.mingdao.com/deployment/kubernetes/upgrade/hap)
-- [常见问题 FAQ](https://docs-pd.mingdao.com/faq/deployment)
+- [版本发布历史](https://docs-pd.mingdao.com/hap/version)
+- [离线资源包](https://docs-pd.mingdao.com/hap/deployment/offline)
+- [微服务升级](https://docs-pd.mingdao.com/hap/deployment/kubernetes/upgrade/hap)
+- [常见问题 FAQ](https://docs-pd.mingdao.com/hap/faq/deployment)
 <!-- 条件保留（仅当本次升级实际涉及该操作时取消注释）：
-- [MongoDB 预置数据更新](https://docs-pd.mingdao.com/deployment/kubernetes/data/preset/mongodb)
-- [MongoDB 新建数据库](https://docs-pd.mingdao.com/deployment/components/mongodb/createdb)
+- [MongoDB 预置数据更新](https://docs-pd.mingdao.com/hap/deployment/kubernetes/data/preset/mongodb)
+- [MongoDB 新建数据库](https://docs-pd.mingdao.com/hap/deployment/components/mongodb/createdb)
 -->
 
 ---

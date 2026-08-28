@@ -178,8 +178,8 @@ kubectl rollout restart deployment/hdpapi -n <ns>
 hdpapi 日志不再出现 `中间库功能未开启`，gRPC server `listening on port: 8366` 后不再立即 shutdown，pod 稳定 Running 即恢复。
 
 ### 官方依据
-- HDP 启用主文档（MDHDP/mdhdp/Flink 1.19.720/`ENV_HDP_ENABLE: "true"`）：https://docs-pd.mingdao.com/faq/integrate/hdp/enable-hdp
-- 行记录多集群存储（mdaggregationwsrows 含义）：https://docs-pd.mingdao.com/optimize/mongodb/storage/mulitWSRows/
+- HDP 启用主文档（MDHDP/mdhdp/Flink 1.19.720/`ENV_HDP_ENABLE: "true"`）：https://docs-pd.mingdao.com/hap/faq/integrate/hdp/enable-hdp
+- 行记录多集群存储（mdaggregationwsrows 含义）：https://docs-pd.mingdao.com/hap/optimize/mongodb/storage/mulitWSRows/
 - 迁移文档旁证（启用聚合表需把 mdaggregationwsrows 加入库列表）：https://docs-pdop.mingdao.com/migration/p2p/migdoc/
 
 ## mongodb-4.0-to-4.2-upgrade-fail — MongoDB 4.0→4.2 升级失败（oplogDeleteFromPoint 未知字段）

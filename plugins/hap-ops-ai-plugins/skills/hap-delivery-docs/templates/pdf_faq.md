@@ -6,7 +6,7 @@
 ## 来源映射（source-map faq_*，nocoly 时替换域名）
 | 部分 | key | URL |
 |---|---|---|
-| 一、部署问题 | faq_deployment | https://docs-pd.mingdao.com/faq/deployment |
+| 一、部署问题 | faq_deployment | https://docs-pd.mingdao.com/hap/faq/deployment |
 | 二、服务运行状况检查 | faq_servicecheck | .../faq/troubleshooting/service-status-check |
 | 三、工作流持续排队 | faq_workflow_queue | .../faq/troubleshooting/workflow-keeps-queuing |
 | 四、图标不显示 | faq_icon | .../faq/troubleshooting/icon-not-showing |

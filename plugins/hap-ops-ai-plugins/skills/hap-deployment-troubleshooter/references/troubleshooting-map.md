@@ -6,15 +6,15 @@
 
 | 问题方向 | 官方页面 |
 |---|---|
-| 版本、发布日期、架构支持、是否有附加操作 | `https://docs-pd.mingdao.com/version` |
-| 部署总入口 | `https://docs-pd.mingdao.com/deployment/platform` |
-| 环境变量 | `https://docs-pd.mingdao.com/deployment/env/` |
-| 常用命令 | `https://docs-pd.mingdao.com/deployment/command` |
-| Kubernetes 入口 | `https://docs-pd.mingdao.com/deployment/kubernetes/` |
-| 组件支持版本 | `https://docs-pd.mingdao.com/deployment/component` |
-| 离线资源包 | `https://docs-pd.mingdao.com/deployment/offline` |
-| 部署 FAQ | `https://docs-pd.mingdao.com/faq/deployment` |
-| 工作流持续排队 FAQ | `https://docs-pd.mingdao.com/faq/troubleshooting/workflow-keeps-queuing/` |
+| 版本、发布日期、架构支持、是否有附加操作 | `https://docs-pd.mingdao.com/hap/version` |
+| 部署总入口 | `https://docs-pd.mingdao.com/hap/deployment/platform` |
+| 环境变量 | `https://docs-pd.mingdao.com/hap/deployment/env/` |
+| 常用命令 | `https://docs-pd.mingdao.com/hap/deployment/command` |
+| Kubernetes 入口 | `https://docs-pd.mingdao.com/hap/deployment/kubernetes/` |
+| 组件支持版本 | `https://docs-pd.mingdao.com/hap/deployment/component` |
+| 离线资源包 | `https://docs-pd.mingdao.com/hap/deployment/offline` |
+| 部署 FAQ | `https://docs-pd.mingdao.com/hap/faq/deployment` |
+| 工作流持续排队 FAQ | `https://docs-pd.mingdao.com/hap/faq/troubleshooting/workflow-keeps-queuing/` |
 
 ## 现象到页面映射
 

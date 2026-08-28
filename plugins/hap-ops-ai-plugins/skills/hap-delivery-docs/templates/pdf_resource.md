@@ -6,7 +6,7 @@
 ## 来源映射（source-map res_*）
 | 部分 | key | URL |
 |---|---|---|
-| 一、支持平台 | res_platform | https://docs-pd.mingdao.com/deployment/platform |
+| 一、支持平台 | res_platform | https://docs-pd.mingdao.com/hap/deployment/platform |
 | 二、组件支持版本 | res_component | .../deployment/component |
 | 三、服务器资源推荐 | res_source | .../deployment/source |
 | 四、服务器性能要求 | res_serverreqs | .../deployment/server-reqs |

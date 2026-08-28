@@ -4,17 +4,17 @@
 
 内容来源：
 
-- 部署问题：https://docs-pd.mingdao.com/faq/deployment
-- 服务运行状况检查：https://docs-pd.mingdao.com/faq/troubleshooting/service-status-check
-- 工作流持续排队：https://docs-pd.mingdao.com/faq/troubleshooting/workflow-keeps-queuing
-- 图标不显示：https://docs-pd.mingdao.com/faq/troubleshooting/icon-not-showing
-- 页面无法访问：https://docs-pd.mingdao.com/faq/troubleshooting/page-not-accessible
+- 部署问题：https://docs-pd.mingdao.com/hap/faq/deployment
+- 服务运行状况检查：https://docs-pd.mingdao.com/hap/faq/troubleshooting/service-status-check
+- 工作流持续排队：https://docs-pd.mingdao.com/hap/faq/troubleshooting/workflow-keeps-queuing
+- 图标不显示：https://docs-pd.mingdao.com/hap/faq/troubleshooting/icon-not-showing
+- 页面无法访问：https://docs-pd.mingdao.com/hap/faq/troubleshooting/page-not-accessible
 
 > 使用提示：从 v7.1.0 开始，mingdaoyun-community 镜像命名已调整为 mingdaoyun-hap，历史镜像名保持不变。执行任何修改前请先备份配置文件（如 /data/mingdao/script/docker-compose.yaml）；生产环境修改后请先在单节点重启观察，确认无影响后再批量执行。
 
 # 第一部分：部署问题
 
-> 原文链接：https://docs-pd.mingdao.com/faq/deployment
+> 原文链接：https://docs-pd.mingdao.com/hap/faq/deployment
 
 ## 如何重新安装
 
@@ -195,7 +195,7 @@ services:
       - 18880:18880
 ```
 
-详见多地址配置说明：https://docs-pd.mingdao.com/deployment/proxy/multipleurl
+详见多地址配置说明：https://docs-pd.mingdao.com/hap/deployment/proxy/multipleurl
 
 ## 如何修改默认存储路径
 
@@ -219,7 +219,7 @@ services:
 
 # 第二部分：服务运行状况检查
 
-> 原文链接：https://docs-pd.mingdao.com/faq/troubleshooting/service-status-check
+> 原文链接：https://docs-pd.mingdao.com/hap/faq/troubleshooting/service-status-check
 
 ## 容器/服务日志
 
@@ -248,7 +248,7 @@ kubectl logs <pod-name>
 
 # 第三部分：工作流持续排队
 
-> 原文链接：https://docs-pd.mingdao.com/faq/troubleshooting/workflow-keeps-queuing
+> 原文链接：https://docs-pd.mingdao.com/hap/faq/troubleshooting/workflow-keeps-queuing
 
 ## 有消费但堆积量大
 
@@ -279,7 +279,7 @@ kubectl rollout restart deploy workflowrouterconsumer
 
 # 第四部分：图标不显示
 
-> 原文链接：https://docs-pd.mingdao.com/faq/troubleshooting/icon-not-showing
+> 原文链接：https://docs-pd.mingdao.com/hap/faq/troubleshooting/icon-not-showing
 
 浏览器访问地址与 docker-compose.yaml 中 `ENV_ADDRESS_MAIN` 不一致时，图标无法显示（同样会导致工作流页面卡加载、文件上传失败）。处理：
 
@@ -294,7 +294,7 @@ bash service.sh restartall
 
 # 第五部分：页面无法访问
 
-> 原文链接：https://docs-pd.mingdao.com/faq/troubleshooting/page-not-accessible
+> 原文链接：https://docs-pd.mingdao.com/hap/faq/troubleshooting/page-not-accessible
 
 ## 基础排查
 
@@ -319,6 +319,6 @@ bash service.sh restartall   # 或 kubectl rollout restart
 # 附录：进一步支持
 
 - 官方文档中心：https://docs-pd.mingdao.com
-- 部署 FAQ：https://docs-pd.mingdao.com/faq/deployment
-- 排障专题：https://docs-pd.mingdao.com/faq/troubleshooting/service-status-check
+- 部署 FAQ：https://docs-pd.mingdao.com/hap/faq/deployment
+- 排障专题：https://docs-pd.mingdao.com/hap/faq/troubleshooting/service-status-check
 - 本文档随官方 FAQ 更新增量维护；如与官方最新内容不一致，以官方为准。

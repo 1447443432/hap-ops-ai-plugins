@@ -147,7 +147,7 @@ def main() -> int:
             errors.append("集群授权有效期检查必须保留 WorkBuddy 集群成品的完整重要提示，不能压缩或改写")
         if text.count("### 1. 授权有效期检查") != 1 or text.count("### 2. 前端二次开发注意事项") != 1:
             errors.append("集群升级前准备的授权和前端二开章节必须各出现一次，不能缺失或重复")
-        if "请参考官方备份与部署文档执行备份" in text or "https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup" in text:
+        if "请参考官方备份与部署文档执行备份" in text or "https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup" in text:
             errors.append("集群数据备份不得套用单机备份说明或单机备份链接")
 
     # “检查资源”必须遵守 WorkBuddy 的单机/集群固定结构。
@@ -257,7 +257,7 @@ def main() -> int:
             backup_text = "\n".join(lines[backup_start:backup_end])
             if "⚠️ **升级前必须完成备份，此步骤不可跳过。**" not in backup_text:
                 errors.append("单机数据备份缺少强制提示")
-            if "https://docs-pd.mingdao.com/deployment/docker-compose/standalone/data/backup" not in backup_text:
+            if "https://docs-pd.mingdao.com/hap/deployment/docker-compose/standalone/data/backup" not in backup_text:
                 errors.append("单机数据备份缺少官方备份文档完整 URL")
             for token in ("docker exec", "mongodump", "backup mysql mongodb file"):
                 if token in backup_text:
