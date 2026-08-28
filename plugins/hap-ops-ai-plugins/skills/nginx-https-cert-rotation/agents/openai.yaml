@@ -1,7 +1,7 @@
 interface:
   display_name: "Nginx HTTPS 证书更换"
-  short_description: "生成参数化的 Nginx HTTPS 证书更换、校验与回滚手册"
-  default_prompt: "Use $nginx-https-cert-rotation to generate a safe Nginx HTTPS certificate replacement runbook."
+  short_description: "生成 Nginx HTTPS 证书更换 MD/HTML 手册"
+  default_prompt: "使用 $nginx-https-cert-rotation 生成成对的中文 Markdown 和 HTML Nginx HTTPS 证书更换手册。"
 
 policy:
   allow_implicit_invocation: true
