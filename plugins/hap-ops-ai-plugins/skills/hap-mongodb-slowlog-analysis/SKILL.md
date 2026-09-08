@@ -329,6 +329,11 @@ description: Analyze MongoDB 4.4.x slow logs from pasted slow-log text, uploaded
 - 生成索引命令时：
   - 不要给索引名
   - 默认使用后台创建参数 `background: true`
+- HAP 工作表的动态字段 ID（通常形如 `rc...`、或其他 24 位十六进制字段 key）是日志中的 HAP 字段 ID，不是可由前缀推断类型的普通业务名称。分析时保留原始 key，并要求通过 HAP 工作表字段映射确认字段名称、类型和是否为数组字段。
+- 对 `ws*` 集合，只要候选索引包含 HAP 动态字段 ID（例如 `rc...`），默认禁止输出可直接执行的 Mongo Shell `createIndex(...)` 命令。索引必须通过 HAP 前台配置（HAP UI retrieval acceleration）：`工作表 -> 编辑表单 -> 更多设置 -> 检索加速`；Mongo Shell 只适用于用户明确确认该索引不受 HAP 管理且要求直接维护 MongoDB 的场景。
+- 推荐通过 HAP 前台创建索引时，报告必须同时给出日志字段 ID、需要在 HAP 中定位的字段、建议字段顺序、等值/范围/排序角色，以及“不要把 `status` 加入索引”的说明。不能把 `rc...` 直接改写成虚构的业务字段名。
+- `rc...` 字段上的单值 `$in`（one-value `$in`）只有在确认字段是标量时才可改写为等值条件；如果字段是数组，`$in: [value]` 通常表示数组包含该值，不能直接改成标量等值。字段类型不明时必须保守表达。
+- 如果候选字段包含 `$ne`、`$nin`、`$not`、`$size`、null/空值混合判断，优先建议在 HAP 写入侧统一原字段类型和默认值，再把查询改成正向精确条件；不要因为字段有 `rc...` 前缀就直接建议在检索加速中建立负向条件索引。
 - 不要仅凭 `COLLSCAN` 就直接推荐索引；先判断过滤条件的选择性、查询频率、集合规模和是否存在更优的查询改写。
 - 不要把 `keysExamined` 高等同于“索引无效”：结合 `docsExamined`、`nreturned`、排序需求和 `limit` 判断索引是否只是部分有效。
 - 不要默认把所有过滤字段都放进复合索引；低选择性、负向谓词、数组多键字段和互斥 `$or` 分支要分别评估。
@@ -405,7 +410,7 @@ description: Analyze MongoDB 4.4.x slow logs from pasted slow-log text, uploaded
 
 ## Index Output Template
 
-索引相关输出必须走下面两种模板之一，不要混用，也不要只给一个孤立的 `use 库名`：
+索引相关输出必须走下面三种模板之一，不要混用，也不要只给一个孤立的 `use 库名`：
 
 1. `可直接建索引`
    - `索引建议`：给出候选索引形态
@@ -419,10 +424,17 @@ description: Analyze MongoDB 4.4.x slow logs from pasted slow-log text, uploaded
    - 不要只输出 `use 库名`
    - 如果确实需要补充，也只能补“改写完成后再回到这里生成候选索引命令”的说明
 
+3. `HAP 前台检索加速`
+   - 适用于 `ws*` 集合中包含 HAP 动态字段 ID（例如 `rc...`）的候选索引。
+   - 不输出 Mongo Shell `createIndex(...)` 命令。
+   - 必须输出操作路径：`工作表 -> 编辑表单 -> 更多设置 -> 检索加速`。
+   - 必须说明：先通过 HAP 字段映射确认日志字段 ID 对应的字段，再按报告给出的字段顺序配置；创建后重新执行 `explain("executionStats")` 或观察慢日志验证。
+
 补充规则：
 - 如果当前判断是“先改查询条件”，则不要伪造 `createIndex(...)` 命令来凑模板。
 - 这类场景必须明确写出“当前不建议直接执行 createIndex，请先改写查询条件”。
 - 不允许只输出一个孤立的 `use 库名`。
+- 如果当前判断是“HAP 前台检索加速”，则不要输出 Mongo Shell 建索引命令；应输出完整的 HAP 前台路径和字段映射核对要求。
 
 ## Post-Rewrite Candidates
 

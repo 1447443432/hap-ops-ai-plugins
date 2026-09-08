@@ -74,6 +74,22 @@ When either field appears in the query:
 - Mention `_id`, `utime`, `rowid`, and `ctime` as default indexed fields for `ws*` collections when it matters to the explanation.
 - Mention `status` as a business filter that should not drive index design.
 
+## HAP Worksheet Field IDs and Index Creation
+
+HAP worksheet slow logs expose dynamic field IDs rather than human-readable field names. Keys beginning with `rc` are HAP worksheet field IDs; the prefix does not by itself identify the field type, whether the field is scalar or an array, or its business meaning.
+
+When a `ws*` query needs an index involving an HAP dynamic field ID:
+
+- Keep the exact field ID in the analysis and ask the operator to map it to the HAP worksheet field before configuring anything.
+- Use the HAP UI retrieval acceleration path `工作表 -> 编辑表单 -> 更多设置 -> 检索加速` to create or change the index.
+- Do not output a Mongo Shell `createIndex(...)` command for that HAP-managed index by default.
+- Report the field IDs and the recommended order, and explicitly exclude `status` unless the user provides a special reason to deviate.
+- Re-run `explain("executionStats")` or compare later slow-log metrics after the UI configuration.
+
+Be careful with `$in` on HAP fields. A one-value `$in` may be rewritten to equality only after confirming the field is scalar. For an array field, `$in: [value]` can mean that the array contains the value, so replacing it with a scalar equality can change results.
+
+For `$ne`, `$nin`, `$not`, `$size`, null/empty, or mixed array-empty predicates, prefer normalizing the original HAP field's write-side type/default and using a positive exact predicate. Do not create a retrieval-acceleration index merely to support a low-selectivity negative predicate.
+
 ## Advice Patterns
 
 ### If `planSummary` is `COLLSCAN`
