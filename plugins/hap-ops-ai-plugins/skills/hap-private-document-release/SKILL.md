@@ -1,80 +1,94 @@
 ---
 name: hap-private-document-release
-description: HAP Private Document 更新发布 SOP（标准流程）。从 Jenkins 构建到写入「研发管理-发布-微服务」工作表并核验的端到端发布流程。触发：用户提到“发布微服务”“更新 hc/ophc”“HAP Private Document 更新”“触发 document 构建并上线”“按发布 SOP 走”“走标准发布流程”等。涉及提交身份、Jenkins 用户名/token 等认证信息时，一律提示用户当场授权或输入，绝不硬编码。
+description: HAP Private Document 更新发布 SOP（标准流程）。从 Jenkins 构建到写入「研发管理-发布-微服务」工作表并核验的端到端发布流程。触发：用户提到"发布微服务""更新发布""更新 hc/ophc""HAP Private Document 更新""触发 document 构建并上线""按发布 SOP 走""走标准发布流程"等。涉及提交身份、Jenkins 用户名/token 等认证信息时，一律提示用户当场授权或输入，绝不硬编码——本 skill 可多人多机共用。
 ---
 
 # HAP Private Document 更新发布 SOP（标准流程）
 
-Jenkins 构建 → 取镜像值 → 写入「研发管理 → 发布 → 微服务」工作表 → 工作流自动发布 → 读回核验。
+Jenkins 构建 → 取镜像值 → 写「研发管理 → 发布 → 微服务」工作表 → 工作流自动发布 → 读回核验。
 
-> 本 skill 不含任何账号、邮箱、token 等个人凭据。凭据必须由执行者当场提供，仅在本次会话内存使用，不写入 skill 或仓库。
+> 本 skill 不含任何账号、邮箱、token 等个人凭据，均由执行者当场提供；这些只存在各自本机记忆里。
 
-## 初次使用准备
+## 初次使用准备（首次必做，缺一不可）
 
-第一次在某仓库或某会话执行前，必须确认以下两项：
+第一次在某仓库/某会话执行前，先确认并向用户索取以下两项，缺失则停下来让用户填写或授权：
 
-1. 提交身份：检查 `git -C <repo> config --local user.email`。若为空或不正确，先让用户提供姓名和邮箱，再设置仓库级 `user.name` 和 `user.email`。
-2. Jenkins 登录用户 id 和 API token。注意使用用户 id，不使用邮箱；凭据缺失时停止并让用户输入或授权。
+1. **提交身份（commit author）**：检查目标仓库 local 身份
+   ```bash
+   git -C <repo> config --local user.email
+   ```
+   若为空或与用户的 sourcecode 账号不符，提示用户给出其姓名/邮箱后设置（注意：全局身份可能是别的账号，会被继承盖错，必须在本仓库 local 覆盖）：
+   ```bash
+   git -C <repo> config --local user.name  "<用户提供的名字>"
+   git -C <repo> config --local user.email "<用户提供的邮箱>"
+   ```
+2. **Jenkins 凭据**：向用户索取其 Jenkins **登录用户 id**（注意是用户 id，不是邮箱；带域名可能 500）和 **API token**，或让用户用 `! <命令>` 自行运行带凭据的 curl。凭据仅在本次会话内存使用，不写盘、不写入 skill。
 
-## 认证与工具选择
+两项就绪后再进入下面的步骤。
 
-- Jenkins 地址：`https://nextci.mingdao.net/`，使用用户当场提供的 `<JENKINS_USER>:<TOKEN>`。
-- HAP 数据连接优先使用 `hap-cli`，其次才回退 HAP MCP。
-- 先运行 `hap auth whoami` 确认当前账号、组织和环境；异常时先引导用户登录或切换环境。
-- 脚本化 `hap-cli` 命令必须使用 `--json`；写入前设置默认应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。
-- `record create/update/delete` 不接收 `--app-id`，依赖默认应用；`record list/get` 可显式传 `--app-id`。
-- 只有 `hap-cli` 不可用、登录失败、权限不足或无法可靠处理字段格式时，才回退 HAP MCP。
-- MCP 返回 `10001 Http Headers verification failed` 时，按本机 reauth → 重启 mcp-remote → `/reload-plugins` 流程处理；无该流程时提示用户执行 `/hap-mcp:setup`。
+## 认证（每次都要用户提供，不硬编码）
 
-## 发布步骤
+- **Jenkins**：`https://nextci.mingdao.net/`，basic-auth 用 `<JENKINS_USER>:<TOKEN>`，由用户提供。
+- **HAP 数据连接固定使用 `hap-cli`**：本 SOP 的 HAP 查询、创建、回读和核验一律使用 `hap-cli`，不要在 `hap-cli` 可用时切换到 HAP MCP。
+  1. 先运行 `hap auth whoami` 或 `hap --profile <profile> auth whoami --json` 确认当前 HAP 登录态、账号、组织和环境。若未安装 `hap`、未登录、当前账号/环境不对，先引导用户执行 `hap auth login`、`hap auth accounts`、`hap auth use <profile>` 或 `hap auth set-current-org <ORG_ID>`。
+  2. 使用 `hap-cli` 读写 HAP 工作表时，脚本化场景必须加 `--json`，并在写入前确认当前应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。可用 profile 时所有命令都带 `--profile <profile>`。
+  3. `record create` 支持 `-a/--app-id`，但发布记录创建前仍必须先执行 `hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`，避免默认应用为空或指错应用。`record get` 不支持 `--use-field-id-as-key`，回读时直接读取原始字段 ID。
+  4. 禁止把 HAP MCP 作为发布记录读写 fallback。只有用户明确要求改用 MCP，或本机没有 `hap-cli` 且用户确认允许改用 MCP 时，才使用 HAP MCP；否则应停止并报告 `hap-cli` 阻塞原因。
+
+## 步骤
 
 ### 1. 触发 Jenkins 构建
-
-前置条件：代码已推送目标分支；HAP_Document 远端使用 `sourcecode.mingdao.net`。
-
+前置：代码已推送目标分支（HAP_Document 远端走 sourcecode.mingdao.net）。
 ```bash
 CRUMB=$(curl -s -u "$JENKINS_USER:$TOKEN" "https://nextci.mingdao.net/crumbIssuer/api/json" | grep -o '"crumb":"[^"]*"' | cut -d'"' -f4)
 curl -u "$JENKINS_USER:$TOKEN" -H "Jenkins-Crumb: $CRUMB" -X POST \
   "https://nextci.mingdao.net/job/<job>/buildWithParameters?BRANCH=origin/<branch>"
 ```
+BRANCH 需带 `origin/` 前缀。轮询 `/job/<job>/lastBuild/api/json` 至 `building:false`、`result:SUCCESS`。
 
-`BRANCH` 必须带 `origin/` 前缀。轮询 `/job/<job>/lastBuild/api/json`，直到 `building:false` 且 `result:SUCCESS`。
+### 2. 校验构建结果并从控制台尾部取值
+- 以 Jenkins 构建 API 为主判定：`building=false` 且 `result=SUCCESS`。
+- 控制台日志还必须出现 `Finished: SUCCESS`，并能提取出目标服务的镜像串；两项缺一不可。若 Jenkins API 成功但日志缺少结束标识或镜像串，停止后报告异常，不要创建发布记录。
+- `{"success":true}` 不是所有 Job 都会输出，不再作为必需条件；如日志中出现则记录为附加成功信号。`error_code:1` 仅表示发消息接口返回，与 Jenkins 构建结果无关。
+- 镜像串形如 `hub.mingdao.com/private/<svc>:<tag>`，按**最后一个冒号**切：服务=`<svc>`、版本号=`<tag>`（YYYYMMDD_HHMM）。同时确认 `<svc>` 与本次发布目标一致，避免把其它服务的镜像写入发布记录。
 
-### 2. 从控制台尾部取值
+### 3. 写微服务工作表（固定使用 `hap-cli`）
+appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4da`。
 
-- 末尾出现 `{"success":true}` 才算构建成功；`error_code:1` 是发消息接口返回，不代表构建失败。
-- 镜像串形如 `hub.mingdao.com/private/<svc>:<tag>`，按最后一个冒号切分：服务为 `<svc>`，版本号为 `<tag>`。
+#### HAP 工具选择
 
-### 3. 写入微服务工作表
-
-优先使用 `hap-cli`，其次使用 HAP MCP。
-
-- appId：`86892856-1fb7-4cee-b4a9-36caa9e8798a`
-- worksheet：`5ba9e096ca6edd0001c9d4da`
+1. **固定 `hap-cli`**：
+   - 认证：`hap auth whoami`。
+   - 查询版本/记录：优先用 `hap --json worksheet record list <worksheetId>`，复杂筛选用 `--filter-json`，视图用对应 view 参数；具体参数以 `hap worksheet record list --help` 为准。
+   - 创建前先设置默认应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。
+   - 创建记录优先用多组 `-f CONTROL_ID=VALUE`，避免 Windows PowerShell 中 `--fields-json` 被引号转义破坏。关联记录、成员、单选/多选字段用单个 key/rowid/accountId 传给 `-f` 即可，由 `hap-cli` 按字段类型转换；不要把数组字段降级为逗号拼接字符串。
+   - 如必须使用 `--fields-json`，不要在 PowerShell 中手写复杂 JSON 参数；应先用可靠方式生成 JSON 并确认传入 CLI 的是合法 JSON。遇到 `--fields-json is not valid JSON` 时，优先改用 `-f`，不要改业务字段值。
+   - 若创建被规则拦截，错误类似 `The record was not saved — the form refuses the write`，且仅因发布 SOP 必填字段（如“操作人”`5ba9e13b442bf3b958fa9ed3`、“服务更新状态”`5bac8d88442bf3b070e3436a`）不在新建表单上，可保持已确认字段不变，追加 `--ignore-rules` 重试。不要删除这些字段绕过规则。
+   - `record get` 回读不要带 `--use-field-id-as-key`；该参数是 `record list` 的参数，`record get` 会报 `No such option '--use-field-id-as-key'`。
+2. **不使用 HAP MCP**：
+   - 本 SOP 不把 HAP MCP 作为自动 fallback。若 `hap-cli` 无法继续，停止并把 `hap-cli` 的错误和下一步建议报告给用户。
 
 #### 创建前强制约束
 
-执行 `record create` 或 MCP `create_record` 前，缺一不可：
+执行 `hap-cli record create` 前必须先完成以下动作，缺一不可：
 
-1. 若用户未指定版本，查询版本规划工作表 `5cc5907771f24d00018030f7`，必须带 viewId `5cc5907771f24d00018030f8`；只取状态为“已发布”的记录，按语义版本号比较。
-2. 获取当前 HAP 操作人 accountId；优先从 `hap auth whoami --json` 获取，回退 MCP 时再使用 `get_current_user` 或本机账号文件。
-3. 打印完整待创建参数，包含 appId、worksheet、triggerWorkflow 及全部字段 ID、名称和值。
-4. 必须等待用户明确回复“确认创建”“确认”或“可以创建”等同意语义后，才能真实创建记录。
-
-#### 字段映射
+1. **自动获取版本**：若用户未明确指定版本号，先查询版本规划工作表 `5cc5907771f24d00018030f7`，必须带 viewId `5cc5907771f24d00018030f8`。只从状态为“已发布”的记录中取值（状态字段 `625f9219414f3f9418a5564e`，已发布 key `1000000`），按标题字段 `5cc590776f3c6e0001e9b2d4` 的语义版本号比较（如 `V12.3.0` > `V12.2.0`），不要只按创建时间判断。若查询结果不唯一、标题无法解析或无法判断最新版本，停止并让用户确认版本。
+2. **自动获取操作人**：优先从 `hap auth whoami --json` 或 `hap --json auth whoami` 的输出获取当前 HAP `accountId` 和姓名；若本机 `hap-cli` 不支持 JSON 输出，则用 `hap auth whoami` 人工核对当前账号，并通过 HAP 查询当前用户信息获取 accountId。写入字段 `5ba9e13b442bf3b958fa9ed3`。
+3. **打印待创建参数**：把完整待创建参数打印给用户确认。使用 `hap-cli` 时打印最终命令和字段 JSON/字段清单。至少包含 `appId`、`worksheet_id`、是否触发 workflow、全部 `fields` 的字段 ID、字段名说明和值。
+4. **等待明确确认**：只有用户明确回复“确认创建”“确认”“可以创建”等同意语义后，才能实际创建记录。用户只是补充参数、修改版本、询问或发测试内容时，禁止创建。
+5. **确认后不再改业务参数**：确认后如遇到 CLI 参数格式、表单规则、编码或回读参数问题，只能调整 `hap-cli` 调用方式（如 `--fields-json` 改 `-f`、追加 `--ignore-rules`、去掉不支持的回读参数），不得修改已确认的服务、版本、镜像 tag、操作人、环境、说明等业务内容；如确需修改业务内容，必须重新打印参数并再次等待确认。
 
 | 字段 | ID | 取值 |
 |---|---|---|
-| 更新的服务（关联） | `5e22b0e044a07d00010e102d` | `/hc`→hc-private（`ab28007a-36e1-4d2d-8e1f-6fb17ca28e92`），`/ophc`→ophc-private（`3bf1c547-1479-4723-bcad-4c00c5e8589b`）；其他服务先查询服务列表 `5dd7b13a44d0ca000162e790` |
-| 服务版本号 | `5bbef4c8442bf3ca1009e7f6` | Jenkins 镜像 tag |
-| 更新环境（多选） | `5ba9e0d4442bf3b958fa9eab` | 用户指定：生产/梅花/沙盒/沙盒2，传选项值数组 |
-| 紧急程度（评分） | `5da7fde89da28200014ce5fb` | 用户指定 1-5，传字符串 |
-| 版本（关联） | `5e2298bd681ea5000146c199` | 从版本规划工作表查询 rowId，不能硬编码旧版本 |
-| 更新说明 | `5c77a4d1442bf213144e35ad` | 默认 `<动态版本名> bugfix` |
-| 操作人（协作人） | `5ba9e13b442bf3b958fa9ed3` | 当前 HAP accountId 数组 |
+| 更新的服务（关联） | `5e22b0e044a07d00010e102d` | `/hc`→hc-private(`ab28007a-36e1-4d2d-8e1f-6fb17ca28e92`)、`/ophc`→ophc-private(`3bf1c547-1479-4723-bcad-4c00c5e8589b`)。其它服务先查服务列表 `5dd7b13a44d0ca000162e790` 取 rowId |
+| 服务版本号 | `5bbef4c8442bf3ca1009e7f6` | 镜像 tag |
+| 更新环境（多选） | `5ba9e0d4442bf3b958fa9eab` | 用户指定：生产/梅花/沙盒/沙盒2，传选项值数组如 `["生产"]` |
+| 紧急程度（评分） | `5da7fde89da28200014ce5fb` | 用户指定 1-5，传字符串如 `"3"` |
+| 版本（关联） | `5e2298bd681ea5000146c199` | 用户给版本号→查版本规划 `5cc5907771f24d00018030f7` 取 rowId；用户未给版本号→自动取最新已发布版本；**查询必带 viewId `5cc5907771f24d00018030f8`**，否则报 430028；标题字段 `5cc590776f3c6e0001e9b2d4`，命名如 `V12.3.0` |
+| 更新说明 | `5c77a4d1442bf213144e35ad` | 默认 `V<版本> bugfix` |
+| 操作人（协作人） | `5ba9e13b442bf3b958fa9ed3` | 当前 HAP 账号 accountId，必须从 `hap-cli` 当前登录账号获取，传 accountId 数组 |
 
-常用默认值：
-
+**常用默认值**（用户不另行说明时以此为准，执行者可按各自约定调整）：
 | 字段 | ID | 默认 |
 |---|---|---|
 | 集群（多选） | `617fc605a0673108fbc4ed66` | 默认 |
@@ -82,14 +96,8 @@ curl -u "$JENKINS_USER:$TOKEN" -H "Jenkins-Crumb: $CRUMB" -X POST \
 | Redis/Kafka（单选） | `62a7f157fe536211a3ab871b` | 否 |
 | 服务更新状态（单选） | `5bac8d88442bf3b070e3436a` | 未更新 |
 
-写入时使用 `triggerWorkflow=true`，因为这是真实生产更新申请，创建前必须完成参数确认。
+`triggerWorkflow=true`（走镜像 Tag 预检 + 后续发布流程）。这是**真实生产更新申请**，建成功后工作流/运维据此操作生产，执行前向用户确认无误。
 
-### 4. 读回核验
-
-使用 `get_record_details`（参数名为 `row_id`）检查：
-
-- 「服务更新状态」是否被工作流改写为“已更新”；
-- 对应环境字段是否为“更新成功”；
-- `_processStatus` 是否存在审批挂起。
-
-hc/ophc 这类 nginx 文档站预检通过后通常可自动更新；若长时间未完成，继续检查流程节点。
+### 4. 读回核验（`get_record_details`，参数名是 `row_id`）
+看：「服务更新状态」是否被工作流改写为"已更新"、对应环境字段（如「公网更新」）是否"更新成功"、`_processStatus` 是否有审批挂起。
+hc/ophc 这类 nginx 文档站属可自动更新，预检通过后通常 1 分钟内直通完成；卡住则看流程节点。
