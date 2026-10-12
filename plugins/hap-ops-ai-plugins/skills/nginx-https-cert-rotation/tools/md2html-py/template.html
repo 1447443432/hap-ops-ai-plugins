@@ -100,10 +100,11 @@
     }
     blockquote.attention p { color: #1f2328; margin-bottom: 4px; }
 
-    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 15.5px; }
-    th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 16px 0; font-size: 15.5px; }
+    th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
     th { background: #f6f8fa; font-weight: 600; }
     tr:nth-child(even) td { background: #f6f8fa; }
+    td code, th code { white-space: normal; overflow-wrap: anywhere; word-break: break-all; }
 
     /* 版本信息表格（文档第一个表格）特殊样式 */
     table.meta-block { border-radius: 8px; overflow: hidden; margin-bottom: 28px; }
