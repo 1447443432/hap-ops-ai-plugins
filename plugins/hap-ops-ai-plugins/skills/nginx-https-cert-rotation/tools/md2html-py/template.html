@@ -138,35 +138,6 @@
     }
     .code-block[data-lang]:not([data-lang=""]) pre { padding-top: 32px; }
 
-    .copy-btn {
-      position: absolute; top: 6px; right: 8px; padding: 3px 10px;
-      background: rgba(175,184,193,.8); color: #24292f;
-      border: 1px solid rgba(27,31,35,.15); border-radius: 4px; cursor: pointer;
-      font-size: 13px; font-weight: 500; transition: background .15s, color .15s; z-index: 2;
-    }
-    .copy-btn:hover { background: rgba(175,184,193,1); }
-    .copy-btn.copied { background: #2ea44f; color: #fff; border-color: transparent; }
-
-    /* ========= 表格内 URL 复制按钮 ========= */
-    td.url-cell {
-      position: relative; max-width: 480px; white-space: nowrap;
-    }
-    td.url-cell .url-text-wrap {
-      display: block; overflow-x: auto; white-space: nowrap;
-      padding-right: 52px; padding-top: 1px;
-    }
-    td.url-cell .url-text-wrap::-webkit-scrollbar { height: 3px; }
-    td.url-cell .url-text-wrap::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 2px; }
-    .url-copy-btn {
-      position: absolute; top: 7px; right: 8px;
-      padding: 2px 8px;
-      background: rgba(175,184,193,.8); color: #24292f;
-      border: 1px solid rgba(27,31,35,.15); border-radius: 4px; cursor: pointer;
-      font-size: 12px; font-weight: 500; transition: background .15s, color .15s; z-index: 2;
-    }
-    .url-copy-btn:hover { background: rgba(175,184,193,1); }
-    .url-copy-btn.copied { background: #2ea44f; color: #fff; border-color: transparent; }
-
     /* ========= 侧边栏关闭按钮（桌面端和移动端均显示） ========= */
     .sidebar-close {
       display: block; position: absolute; top: 10px; right: 10px;
@@ -207,8 +178,6 @@
       h3 { font-size: 17.5px; }
 
       table { font-size: 14px; display: block; overflow-x: auto; }
-      td.url-cell { max-width: 280px; }
-
       .code-block pre { font-size: 14px; }
     }
   </style>
@@ -229,45 +198,6 @@
   </div>
 </div>
 <script>
-// 代码块复制按钮
-document.querySelectorAll('.copy-btn').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    var pre = btn.closest('.code-block').querySelector('pre');
-    navigator.clipboard.writeText(pre.innerText).then(function() {
-      btn.textContent = '已复制';
-      btn.classList.add('copied');
-      setTimeout(function() { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
-    });
-  });
-});
-
-// 表格内 URL 复制按钮（自动为包含 https:// 的单元格添加，按钮固定右上角）
-(function() {
-  document.querySelectorAll('table td').forEach(function(td) {
-    var text = td.textContent;
-    if (text.indexOf('https://') === -1 && text.indexOf('http://') === -1) return;
-    td.classList.add('url-cell');
-    // 将已有内容包裹在可滚动容器中，使按钮不被卷走
-    var wrap = document.createElement('span');
-    wrap.className = 'url-text-wrap';
-    while (td.firstChild) wrap.appendChild(td.firstChild);
-    td.appendChild(wrap);
-    var btn = document.createElement('button');
-    btn.className = 'url-copy-btn';
-    btn.textContent = '复制';
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var url = wrap.textContent.trim();
-      navigator.clipboard.writeText(url).then(function() {
-        btn.textContent = '已复制';
-        btn.classList.add('copied');
-        setTimeout(function() { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
-      });
-    });
-    td.appendChild(btn);
-  });
-})();
-
 // 侧边栏折叠（桌面端按钮 + 移动端遮罩 + 关闭按钮）
 (function() {
   var sidebar = document.querySelector('.sidebar');

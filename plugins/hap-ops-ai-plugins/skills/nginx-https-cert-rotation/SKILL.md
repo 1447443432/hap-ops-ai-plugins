@@ -52,6 +52,7 @@ metadata:
 | new_key_source | 否 | 新私钥上传源绝对路径；缺失时使用 /data/mdtemp/ 示例 |
 | domain 或 verify_host | 否 | 用于 SNI 和外部 HTTPS 验证的域名 |
 | verify_url | 否 | 用于 curl -Iv 和浏览器验证的完整 HTTPS URL |
+| verify_port | 否 | HTTPS 验证端口；默认 443；如果地址或 URL 明确带端口，以明确端口为准 |
 | reload_command | 否 | auto 默认二进制重载；只有确认 systemd 服务单元后才允许选择 systemctl restart nginx |
 | output_dir | 否 | 输出目录，默认是当前工作区下的 artifacts/ |
 | output_basename | 否 | MD 和 HTML 的共同文件名；未指定时按域名规则生成 |
@@ -73,6 +74,8 @@ metadata:
 - 允许使用顿号、逗号、空格和换行分隔参数。处理 Markdown 展示转义时，只移除反斜杠对下划线的展示转义，不改变真实 POSIX 路径。
 - 证书和私钥路径必须是绝对 POSIX 路径。相对路径要标记为待确认。
 - ssl_certificate 和 ssl_certificate_key 是活动配置的目标路径，不是上传源路径。只提供目标路径时，新文件来源仍然是可选的。
+- 访问地址支持 `https://主机:端口/路径`、`主机:端口` 或单独的 `verify_port` 参数；未明确端口时默认使用 443。解析后主机名用于 SNI，实际端口必须贯穿配置发现提示、`openssl s_client -connect`、`curl --resolve`、浏览器验证地址和结果说明。
+- 不要把非 443 端口改写成 443，也不要把端口拼进 SNI 主机名；例如 `https://example.com:8443/` 应生成 `-connect example.com:8443`、`--resolve example.com:8443:目标IP` 和 `https://example.com:8443/`。
 - 如果路径角色无法确定，不要猜测；保留待确认标记并给出发现命令。
 
 ## 多入口共用证书的分组规则
@@ -105,7 +108,7 @@ metadata:
 2. Go 版：tools/md2html/md2html.exe、main.go、go.mod、go.sum 和 template.html。
    - Windows 优先使用已构建的 md2html.exe。
    - 如果没有可执行文件，可以根据同目录的 main.go 和 go.mod 重建。
-   - Python 版和 Go 版必须使用相同的升级指南风格模板，输出侧边栏目录、响应式布局和代码复制按钮。
+   - Python 版和 Go 版必须使用相同的升级指南风格模板，输出侧边栏目录和响应式布局；不生成代码块或表格 URL 的复制按钮。
 
 生成 HTML 时优先使用 Python 版；如果当前环境没有可用 Python，再使用 Go 版。无论采用哪一版，都必须验证 HTML 转换成功。不要手写第二套 HTML 模板，也不要使用升级指南专用的 finalize_upgrade_doc.py 校验器。
 
@@ -113,7 +116,7 @@ metadata:
 
 - 每次都生成同名的两个文件：一个 .md，一个 .html。HTML 转换失败时不能宣称完成。
 - 默认写入当前工作区的 artifacts/；接受用户指定的 output_dir 和 output_basename。
-- HTML 必须是自包含文档，并保留升级指南风格的侧边栏目录、响应式布局和代码块复制按钮。
+- HTML 必须是自包含文档，并保留升级指南风格的侧边栏目录和响应式布局；HTML 中不生成代码块复制按钮或表格 URL 复制按钮。
 - HTML 表格必须使用固定布局；长路径、URL 和表格内代码必须允许断行，不能把正文区域撑出横向滚动条或把列挤成竖排；命令代码块仍可单独横向滚动。
 - 转换后检查两个文件存在、可按 UTF-8 读取、共同文件名一致；HTML 必须包含 DOCTYPE 和生成的标题。
 - 手册开头必须有以 ⚠️ 开头的醒目注意事项引用块，并在状态表附近给出三色状态图例。
@@ -123,7 +126,7 @@ metadata:
 ## 执行流程
 
 1. 解析命名或位置参数，然后只对 nginx_bin 和 nginx_conf 应用默认值。参数表的“来源或说明”列按确认状态规则只填写“已确认”或“待确认”。
-2. 先使用实际 nginx_bin 执行 -T，发现真正生效的 ssl_certificate、ssl_certificate_key、server_name 和 listen 443 ssl。nginx_conf 只是候选业务配置文件，不能未经确认当作主配置。
+2. 先使用实际 nginx_bin 执行 -T，发现真正生效的 ssl_certificate、ssl_certificate_key、server_name 和启用 SSL 的 listen 指令；不能假设端口一定是 443。nginx_conf 只是候选业务配置文件，不能未经确认当作主配置。
 3. 通过主配置的 include 关系和 nginx_conf 做回退检查。不要把通常位于 conf.d/ 下的业务配置文件直接传给 nginx -c。
 4. 判断变更类型：
    - 同路径续期：活动指令已经指向用户提供的证书和私钥目标路径，只备份并替换两个文件，不修改 Nginx 或 HAP 配置。
@@ -144,7 +147,7 @@ metadata:
 7. 证书和私钥公钥匹配：使用规范化 DER 公钥摘要，兼容 RSA 和 EC；共享证书组先比较证书与共享新私钥来源，再按需比较多个旧/新目标私钥路径的公钥摘要，不要求用户粘贴私钥内容或口令。
 8. nginx -t：使用正确的主配置上下文，并明确测试失败时停止后续重载或重启。
 9. Nginx 服务动作：每个共享证书组在所有证书和私钥目标路径替换完成后只执行一次；先给实际 nginx_bin 的 -s reload 作为默认方式，只有确认 nginx.service 后才给 systemctl restart nginx 可选方式。两种方式不能串联执行；同路径续期不需要重启 HAP。
-10. 外部验证：每个入口分别验证；使用证书身份域名和 `openssl s_client -servername`，IP 入口优先用 `curl --resolve` 定向验证；正常成功检查不使用 `-k`。
+10. 外部验证：每个入口分别验证；使用证书身份域名和 `openssl s_client -servername`，IP 入口优先用 `curl --resolve` 定向验证。所有验证命令使用解析出的实际 HTTPS 端口；正常成功检查不使用 `-k`。
 11. 回滚：每个共享证书组的证书只恢复一次，每个不同私钥目标分别恢复；如果多个目标是同一把私钥的路径副本，也必须恢复各自路径。使用记录的时间戳恢复备份，重新通过 nginx -t 后只选择一种 Nginx 重载或重启方式。
 12. 故障表：活动配置错误、证书私钥不匹配、私钥不可读、证书过期或未生效、证书链不完整、重载失败、上游 TLS 终止点等。
 13. 参考文档；不要在手册正文中列出本次生成的 Markdown、HTML 文件路径或转换状态。

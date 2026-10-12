@@ -9,7 +9,7 @@ md2html.py — 跨平台 Markdown -> HTML 转换器（HAP 升级指南专用）
 设计目标：
   1. 零第三方依赖，仅用 Python 标准库（不联网、不 pip install）。
   2. 与 Go 版产物"同源"：同一份 template.html 保证 CSS/JS/侧边栏/TOC 交互完全一致；
-     后处理逻辑（heading id、静态 TOC、日期高亮、代码块复制按钮）逐条等价复刻 Go 版。
+     后处理逻辑（heading id、静态 TOC、日期高亮）逐条等价复刻 Go 版。
   3. 用法兼容 Go 版：md2html.py -input xxx.md -output xxx.html [-title 标题]
 
 作者：HAP 升级指南 Skill 维护
@@ -585,7 +585,7 @@ def process_code_blocks(body):
         label = '<span class="code-lang-label">' + valid + '</span>' if valid else ''
         attrs = opening[len('<pre><code'):]  # ' class="language-x">' 或 '>'
         return ('<div class="code-block" data-lang="' + valid + '">' + label +
-                '<button class="copy-btn">复制</button><pre><code' + attrs + code + '</code></pre></div>')
+                '<pre><code' + attrs + code + '</code></pre></div>')
 
     return _CODE_BLOCK_RE.sub(_repl, body)
 
@@ -744,7 +744,7 @@ def find_template():
 def main():
     ap = argparse.ArgumentParser(
         description='Convert HAP Upgrade Guide Markdown to a single-file HTML document '
-                    '(sidebar TOC, code copy buttons, responsive layout).')
+                    '(sidebar TOC, responsive layout, no copy buttons).')
     ap.add_argument('-input', required=True, help='Input Markdown file path')
     ap.add_argument('-output', required=True, help='Output HTML file path')
     ap.add_argument('-title', default='', help='Document title (auto from first h1 if empty)')

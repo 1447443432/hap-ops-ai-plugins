@@ -34,7 +34,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Usage: md2html -input <file.md> -output <file.html> [-title <title>]")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Converts a HAP Upgrade Guide Markdown file to a single-file HTML document")
-		fmt.Fprintln(os.Stderr, "with sidebar TOC, code block copy buttons, and responsive layout.")
+		fmt.Fprintln(os.Stderr, "with sidebar TOC, responsive layout, and no copy buttons.")
 		os.Exit(1)
 	}
 
@@ -113,7 +113,7 @@ func processCodeBlocks(html string) string {
 		}
 
 		return fmt.Sprintf(
-			`<div class="code-block" data-lang="%s">%s<button class="copy-btn">复制</button><pre><code%s%s%s</code></pre></div>`,
+			`<div class="code-block" data-lang="%s">%s<pre><code%s%s%s</code></pre></div>`,
 			validLang, labelHTML,
 			strings.TrimPrefix(openingTag, "<pre><code"),
 			codeContent, closingTag,

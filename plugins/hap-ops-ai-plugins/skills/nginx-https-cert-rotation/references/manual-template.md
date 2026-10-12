@@ -15,6 +15,7 @@
 | 新证书来源 | /data/mdtemp/new-certificate.crt | 🟨 待确认 |
 | 新私钥来源 | /data/mdtemp/new-private-key.key | 🟨 待确认 |
 | 访问域名 | <待补充域名> | 🟨 待确认 |
+| HTTPS 端口 | 443 | 🟨 待确认（未提供端口时默认 443） |
 
 状态图例：🟩 已确认（用户明确提供）；🟨 待确认（默认值、示例或需要现场核验）；🟥 缺失（不能据此生成精确替换命令）。
 
@@ -38,8 +39,8 @@
 **执行：**
 
 ~~~bash
-/usr/local/nginx/sbin/nginx -T 2>&1 | grep -nE 'ssl_certificate(_key)?|server_name|listen[[:space:]].*443'
-grep -nE 'include|ssl_certificate(_key)?|server_name|listen[[:space:]].*443' /usr/local/nginx/conf/conf.d/hap.conf
+/usr/local/nginx/sbin/nginx -T 2>&1 | grep -nE 'ssl_certificate(_key)?|server_name|listen[[:space:]].*ssl'
+grep -nE 'include|ssl_certificate(_key)?|server_name|listen[[:space:]].*ssl' /usr/local/nginx/conf/conf.d/hap.conf
 ~~~
 
 **正常结果：** 能看到 HTTPS 配置，并且证书、私钥路径与参数摘要一致。
@@ -186,11 +187,11 @@ systemctl restart nginx
 
 **目的：** 确认用户实际访问到新证书。
 
-有域名时，把 <实际域名> 换成真实域名：
+有域名时，把 `<实际域名>` 和 `<实际HTTPS端口>` 换成真实值。未提供端口时，`<实际HTTPS端口>` 使用 443；如果用户输入了 `:8443` 或完整的 `https://域名:8443/`，下面所有验证命令都使用 8443：
 
 ~~~bash
-curl -Iv https://<实际域名>/
-openssl s_client -connect <实际域名>:443 -servername <实际域名> </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+curl -Iv https://<实际域名>:<实际HTTPS端口>/
+openssl s_client -connect <实际域名>:<实际HTTPS端口> -servername <实际域名> </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 ~~~
 
 **正常结果：** 浏览器没有证书警告，域名匹配，有效期已更新，业务页面可以打开。
@@ -198,6 +199,13 @@ openssl s_client -connect <实际域名>:443 -servername <实际域名> </dev/nu
 **出错处理：** ⚠️ 没有域名时先标记待确认；如果仍返回旧证书，检查 CDN、WAF、SLB、Ingress 或其他 Nginx 节点。
 
 多个入口共用同一证书和私钥内容时，每个入口分别验证一次，但不要重复备份、替换证书或重载。若第二个入口是 IP，而证书只签发给域名，请使用证书域名配合 `curl --resolve` 定向到该 IP；直接访问 IP 出现名称不匹配不等于证书替换失败。
+
+IP 入口示例（证书签发给域名时）：
+
+~~~bash
+curl -Iv --resolve <证书域名>:<实际HTTPS端口>:<IP地址> https://<证书域名>:<实际HTTPS端口>/
+openssl s_client -connect <IP地址>:<实际HTTPS端口> -servername <证书域名> </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+~~~
 
 ### 回滚
 
