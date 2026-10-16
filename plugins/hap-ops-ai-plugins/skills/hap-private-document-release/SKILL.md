@@ -33,7 +33,9 @@ Jenkins 构建 → 取镜像值 → 写「研发管理 → 发布 → 微服务�
   1. 先运行 `hap auth whoami` 或 `hap --profile <profile> auth whoami --json` 确认当前 HAP 登录态、账号、组织和环境。若未安装 `hap`、未登录、当前账号/环境不对，先引导用户执行 `hap auth login`、`hap auth accounts`、`hap auth use <profile>` 或 `hap auth set-current-org <ORG_ID>`。
   2. 使用 `hap-cli` 读写 HAP 工作表时，脚本化场景必须加 `--json`，并在写入前确认当前应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。可用 profile 时所有命令都带 `--profile <profile>`。
   3. `record create` 支持 `-a/--app-id`，但发布记录创建前仍必须先执行 `hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`，避免默认应用为空或指错应用。`record get` 不支持 `--use-field-id-as-key`，回读时直接读取原始字段 ID。
-  4. 禁止把 HAP MCP 作为发布记录读写 fallback。只有用户明确要求改用 MCP，或本机没有 `hap-cli` 且用户确认允许改用 MCP 时，才使用 HAP MCP；否则应停止并报告 `hap-cli` 阻塞原因。
+  4. Windows 下执行 `hap-cli` 前设置 `PYTHONIOENCODING=utf-8`；JSON 输出保存到 UTF-8 文件后再解析，避免中文响应被 GBK 破坏。不要根据乱码、空输出或控制台编码异常直接判断请求失败。
+  5. 如果 `hap auth whoami` 报 token 缺失、无效或过期，停止 HAP 操作并让用户重新执行 `hap auth login`（推荐 PAT）；重新登录成功并核对账号、组织、环境后再继续。不要切到 HAP MCP，也不要把 token 打印到日志。
+  6. 禁止把 HAP MCP 作为发布记录读写 fallback。只有用户明确要求改用 MCP，或本机没有 `hap-cli` 且用户确认允许改用 MCP 时，才使用 HAP MCP；否则应停止并报告 `hap-cli` 阻塞原因。
 
 ## 步骤
 
@@ -44,7 +46,9 @@ CRUMB=$(curl -s -u "$JENKINS_USER:$TOKEN" "https://nextci.mingdao.net/crumbIssue
 curl -u "$JENKINS_USER:$TOKEN" -H "Jenkins-Crumb: $CRUMB" -X POST \
   "https://nextci.mingdao.net/job/<job>/buildWithParameters?BRANCH=origin/<branch>"
 ```
-BRANCH 需带 `origin/` 前缀。轮询 `/job/<job>/lastBuild/api/json` 至 `building:false`、`result:SUCCESS`。
+BRANCH 需带 `origin/` 前缀。保存 POST 响应的 `Location` queue URL，轮询该 queue item，直到返回 `executable.url` 和构建编号；后续只使用这个精确的 build URL，不要用 `lastBuild` 猜测编号或拼接嵌套 job 路径。若 API 返回 404，先用 job API 核对任务 URL 和 queue 返回的 build URL，禁止因为路径不确定而重复触发构建。
+
+Windows 下若用 `curl` 查询带 `{}` 的 Jenkins `tree` 参数，必须加 `--globoff`；curl JSON 不要直接交给 PowerShell 默认编码的 `ConvertFrom-Json`，保存为 UTF-8 后用 Node/Python 解析。响应为空、非 JSON 或编码损坏时先报告查询异常，不要据此重触发构建。
 
 ### 2. 校验构建结果并从控制台尾部取值
 - 以 Jenkins 构建 API 为主判定：`building=false` 且 `result=SUCCESS`。
@@ -61,11 +65,13 @@ appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4
 1. **固定 `hap-cli`**：
    - 认证：`hap auth whoami`。
    - 查询版本/记录：优先用 `hap --json worksheet record list <worksheetId>`，复杂筛选用 `--filter-json`，视图用对应 view 参数；具体参数以 `hap worksheet record list --help` 为准。
+   - 使用 `--table-view` 查询版本规划时，返回通常是 `data.rows` 分组；每个分组的 `rows` 可能是 JSON 字符串数组。必须先展开分组并逐条解析，再按状态 key `1000000` 过滤和比较语义版本，不能把 `data` 直接当作记录数组。
    - 创建前先设置默认应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。
    - 创建记录优先用多组 `-f CONTROL_ID=VALUE`，避免 Windows PowerShell 中 `--fields-json` 被引号转义破坏。关联记录、成员、单选/多选字段用单个 key/rowid/accountId 传给 `-f` 即可，由 `hap-cli` 按字段类型转换；不要把数组字段降级为逗号拼接字符串。
    - 如必须使用 `--fields-json`，不要在 PowerShell 中手写复杂 JSON 参数；应先用可靠方式生成 JSON 并确认传入 CLI 的是合法 JSON。遇到 `--fields-json is not valid JSON` 时，优先改用 `-f`，不要改业务字段值。
    - 若创建被规则拦截，错误类似 `The record was not saved — the form refuses the write`，且仅因发布 SOP 必填字段（如“操作人”`5ba9e13b442bf3b958fa9ed3`、“服务更新状态”`5bac8d88442bf3b070e3436a`）不在新建表单上，可保持已确认字段不变，追加 `--ignore-rules` 重试。不要删除这些字段绕过规则。
    - `record get` 回读不要带 `--use-field-id-as-key`；该参数是 `record list` 的参数，`record get` 会报 `No such option '--use-field-id-as-key'`。
+   - 创建结果以返回的 `data.rowid` 为准；即使顶层 `resultCode` 或 `error_code` 显示为 `1`，只要有 `data.rowid` 且没有错误对象，就保存该 rowid 继续回读，不要误判为创建失败。
 2. **不使用 HAP MCP**：
    - 本 SOP 不把 HAP MCP 作为自动 fallback。若 `hap-cli` 无法继续，停止并把 `hap-cli` 的错误和下一步建议报告给用户。
 
@@ -99,6 +105,7 @@ appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4
 
 `triggerWorkflow=true`（走镜像 Tag 预检 + 后续发布流程）。这是**真实生产更新申请**，建成功后工作流/运维据此操作生产，执行前向用户确认无误。
 
-### 4. 读回核验（`get_record_details`，参数名是 `row_id`）
-看：「服务更新状态」是否被工作流改写为"已更新"、对应环境字段（如「公网更新」）是否"更新成功"、`_processStatus` 是否有审批挂起。
-hc/ophc 这类 nginx 文档站属可自动更新，预检通过后通常 1 分钟内直通完成；卡住则看流程节点。
+### 4. 读回核验（固定使用 `hap-cli worksheet record get`）
+创建成功后立即保存 rowid 并回读一次，核对服务、版本、镜像标签、更新说明、环境和操作人。随后以 15 秒左右间隔轮询，最多等待约 2 分钟，检查：「服务更新状态」是否为“已更新”、对应环境字段（如「公网更新」）是否为“更新成功”、流程状态是否有审批挂起。
+
+如果等待命令超时、返回空输出或只显示工具层错误，不要创建第二条记录；直接用已保存的 worksheet ID + rowid 重新执行 `record get`。只有明确读到失败状态或超过上限仍未完成，才报告工作流异常。
