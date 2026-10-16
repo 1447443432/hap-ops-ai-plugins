@@ -51,6 +51,7 @@ BRANCH 需带 `origin/` 前缀。轮询 `/job/<job>/lastBuild/api/json` 至 `bui
 - 控制台日志还必须出现 `Finished: SUCCESS`，并能提取出目标服务的镜像串；两项缺一不可。若 Jenkins API 成功但日志缺少结束标识或镜像串，停止后报告异常，不要创建发布记录。
 - `{"success":true}` 不是所有 Job 都会输出，不再作为必需条件；如日志中出现则记录为附加成功信号。`error_code:1` 仅表示发消息接口返回，与 Jenkins 构建结果无关。
 - 镜像串形如 `hub.mingdao.com/private/<svc>:<tag>`，按**最后一个冒号**切：服务=`<svc>`、版本号=`<tag>`（YYYYMMDD_HHMM）。同时确认 `<svc>` 与本次发布目标一致，避免把其它服务的镜像写入发布记录。
+- 更新说明优先取本次构建对应 Git 提交的 subject：`git log -1 --format=%s <revision>`；若构建 revision 与本地一致可使用 `git log -1 --format=%s HEAD`。清理首尾空白、句末标点和 `feat:`、`fix:`、`docs:`、`refactor:` 等约定式前缀，保留简洁明确的业务描述，建议不超过 80 个字符。提交标题不可用或过于笼统时，才回退为 `V<版本> bugfix`。
 
 ### 3. 写微服务工作表（固定使用 `hap-cli`）
 appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4da`。
@@ -85,7 +86,7 @@ appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4
 | 更新环境（多选） | `5ba9e0d4442bf3b958fa9eab` | 用户指定：生产/梅花/沙盒/沙盒2，传选项值数组如 `["生产"]` |
 | 紧急程度（评分） | `5da7fde89da28200014ce5fb` | 用户指定 1-5，传字符串如 `"3"` |
 | 版本（关联） | `5e2298bd681ea5000146c199` | 用户给版本号→查版本规划 `5cc5907771f24d00018030f7` 取 rowId；用户未给版本号→自动取最新已发布版本；**查询必带 viewId `5cc5907771f24d00018030f8`**，否则报 430028；标题字段 `5cc590776f3c6e0001e9b2d4`，命名如 `V12.3.0` |
-| 更新说明 | `5c77a4d1442bf213144e35ad` | 默认 `V<版本> bugfix` |
+| 更新说明 | `5c77a4d1442bf213144e35ad` | 优先使用本次构建对应 Git 提交的简洁 subject；无法取得时回退 `V<版本> bugfix` |
 | 操作人（协作人） | `5ba9e13b442bf3b958fa9ed3` | 当前 HAP 账号 accountId，必须从 `hap-cli` 当前登录账号获取，传 accountId 数组 |
 
 **常用默认值**（用户不另行说明时以此为准，执行者可按各自约定调整）：
