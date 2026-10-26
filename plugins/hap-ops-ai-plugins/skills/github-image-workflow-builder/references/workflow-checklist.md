@@ -80,7 +80,7 @@
 - [ ] 检查 HAP URL 为空
 - [ ] `actionlint` 检查通过
 - [ ] 若修改 Runner 或 Action 以消除 Annotations，已在新运行中逐个 Job 核对；不以旧运行或静态检查代替
-- [ ] 若用户要求清理历史运行，仅在成功后清理当前 Workflow 的旧已完成运行，保留当前及最新成功运行，未触及进行中运行
+- [ ] 若用户要求清理历史运行，已确认 Workflow/分支、触发时机和“成功”的定义；候选 ID、保留 ID、权限及实际删除数已核对，未触及进行中的运行
 - [ ] `python .github/image-make/test_release.py` 检查通过
 - [ ] `image-make.yml` 的 lint Job 通过后才进入 config/Build/Package/Release
 - [ ] 需要阻断合并时，Branch Protection 已将 `Image Make / Validate GitHub Actions workflows` 设为必需检查

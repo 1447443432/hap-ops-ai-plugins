@@ -1,6 +1,6 @@
 ---
 name: github-image-workflow-builder
-description: 创建、修复和验证项目级 GitHub Actions 镜像构建 Workflow，适用于 amd64/arm64 分开构建、可选镜像推送、Release 打包和 Webhook 通知。
+description: 创建、修复和验证项目级 GitHub Actions 构建 Workflow，适用于 amd64/arm64 分开构建、可选镜像推送、Release 打包、Webhook 通知和按需清理运行记录。
 metadata:
   short-description: 严谨构建和排障 GitHub 镜像 Workflow
 ---
@@ -27,6 +27,7 @@ Git push 与手动运行要区分：push 不接收 `workflow_dispatch` 的 `oper
 - 将镜像保存为 Release 附件
 - 可选推送到阿里云或其他镜像仓库
 - 可选调用 HAP Webhook
+- 按要求清理 GitHub Actions 的历史运行记录
 - 排查 buildx、架构不匹配、Job skipped、Artifact、Release、Workflow Summary 或 Actions Annotations 问题
 
 不适用于单纯 Dockerfile 编写、普通业务脚本或只要求发布已有镜像而不涉及 GitHub Workflow 的任务。
@@ -73,8 +74,15 @@ Git push 与手动运行要区分：push 不接收 `workflow_dispatch` 的 `oper
 
 - 先按 Annotations 的原文区分 Runner 镜像迁移通知、Action 运行时弃用和实际构建错误，不把所有提示归咎于业务脚本。遇到 `ubuntu-latest` 迁移提示时，检查所有 Job 的 `runs-on` 及矩阵中的 Runner 值；若项目需要保持 Ubuntu 24.04，则将 x64 Job 固定为 `ubuntu-24.04`，保留原生 arm64 的 `ubuntu-24.04-arm`。不要仅为消除提示而无依据地升级到新系统镜像。
 - 对已有项目只修改导致问题的 Workflow/配置，不要求重建整套目录或强加本 Skill 的推荐命名。`actionlint` 只能做静态检查；Runner 和 Action 的平台通知要在新运行中核验，旧运行的 Annotations 不会因修改 YAML 消失。
-- 如果用户需要可选模块，分别控制 Build、Release、Webhook 等实际可选环节，默认值按项目要求设置；依赖未满足时明确跳过原因，不能把必需的架构构建任务合并掉。若用户要求成功构建后清理历史运行，优先参考项目现有 Workflow（如 nginx-make），在同一 YAML 末尾增加依赖成功发布/通知的清理 Job，只授予该 Job `actions: write`；仅删除当前 Workflow 早于本次运行的已完成记录，保留当前、更新及进行中的运行。仅当用户明确需要独立定时或单独手动清理时才新增另一个 Workflow；说明新清理 Workflow 不会因自身文件的 push 自动运行，首次清理需要匹配的触发事件。删除运行记录及关联日志、Artifact 不可恢复，未获授权不要主动增加清理逻辑。
+- 如果用户需要可选模块，分别控制 Build、Release、Webhook 等实际可选环节，默认值按项目要求设置；依赖未满足时明确跳过原因，不能把必需的架构构建任务合并掉。
 - Summary 必须来自实际解析结果和 Release 产物。展示所选模块、架构、依赖版本、Release tag 与真实附件下载链接；生成 Markdown 表格前检查 shell/YAML/JQ 插值是否真的执行，避免把 `(.name)`、`(.browser_download_url)` 或空值当成内容输出。
+
+## 按需清理 Actions 运行记录
+
+- 先确认清理范围（Workflow、分支、成功/失败记录）和触发时机。若清理依附一次完整构建，优先参考项目现有 Workflow（如 nginx-make），在同一 YAML 的末尾加 Job；让它依赖必需的 Build、Release 和通知结果，并正确处理可选 Job 的 `skipped` 状态。只有明确需要独立定时或单独手动清理时才拆分 YAML。
+- 只给清理 Job `actions: write`。分页读取目标 Workflow 和分支的运行，删除早于本次运行且 `status=completed` 的记录；保留本次、更新、排队和运行中的记录。删除失败时明确记录失败数，不要误报清理完成。运行记录删除后，日志和关联 Artifact 一并消失；Release 附件仍在。
+- 同一 YAML 的清理 Job 运行时，本次 Workflow 尚未结束，不能严格保证“任何时刻都保留一条已完成且成功的运行”。若用户要求这个保证，应在 `workflow_run: completed` 事件后清理；若只要求成功构建链结束后收敛历史，同 YAML 的末尾 Job 即可。独立 YAML 首次提交不会自动产生 `workflow_run`，还要检查原构建 Workflow 的 `push.paths` 是否匹配这次提交。
+- 清理前核对 API 列出的候选运行 ID 和应保留的 ID；上线后检查 Job 日志、删除数和实际剩余记录。删除不可恢复，未获用户授权不要自行加入清理逻辑或清空历史。
 
 ## 推荐目录
 
