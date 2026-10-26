@@ -27,7 +27,7 @@ Git push 与手动运行要区分：push 不接收 `workflow_dispatch` 的 `oper
 - 将镜像保存为 Release 附件
 - 可选推送到阿里云或其他镜像仓库
 - 可选调用 HAP Webhook
-- 排查 buildx、架构不匹配、Job skipped、Artifact、Release 或 Workflow Summary 问题
+- 排查 buildx、架构不匹配、Job skipped、Artifact、Release、Workflow Summary 或 Actions Annotations 问题
 
 不适用于单纯 Dockerfile 编写、普通业务脚本或只要求发布已有镜像而不涉及 GitHub Workflow 的任务。
 
@@ -48,7 +48,7 @@ Git push 与手动运行要区分：push 不接收 `workflow_dispatch` 的 `oper
 8. Release 选择镜像来源：`pull-release` 和 `build-push-release` 的清单记录阿里云镜像地址，`build-release` 记录主镜像地址。Release-only 模式无法访问本地 Build 时，必须明确要求可拉取的阿里云镜像，或先执行 Build。
 9. HAP Webhook 必须使用 nginx-make 兼容的通用 JSON 协议：固定输出 `project_name`、`repository`、`version`、`tag`、`release_url`、`amd64_name`、`amd64_url`、`amd64_sha256`、`arm64_name`、`arm64_url`、`arm64_sha256`、`attachment_urls`、`commit_sha`、`run_id`、`run_url`、`build_status`；其中 `attachment_urls` 是 JSON 字符串，不是 JSON 数组。项目名从 `RELEASE_NAME` 或仓库名推导，不能把项目字段硬编码到 CI 引擎。
 10. HAP Webhook URL 为空或开关关闭时只跳过通知，并在 `$GITHUB_STEP_SUMMARY` 写出明确原因；不能因为 URL 为空而让 Release 失败。通知只在 Release 成功后发送。
-11. 每个独立 Job 都必须 checkout 仓库。Job 之间只共享 Artifact 和 Job Outputs，不共享工作区文件。
+11. 每个需要读取仓库文件的独立 Job 都要 checkout 仓库。Job 之间只共享 Artifact 和 Job Outputs，不共享工作区文件。
 12. 不要使用保留环境变量名作为业务配置名。尤其不要把构建目录命名为 `DOCKER_CONTEXT`；Docker 会将其解释为 Docker Context 名称。使用 `BUILD_CONTEXT`。
 13. buildx 必须可靠初始化。不要依赖空的 `BUILDX_BUILDER` 或某个 Action 的隐式 Builder；构建脚本应明确选择或创建 Builder，并在构建时传 `--builder`。
 14. Artifact 名称按镜像最后一段和 Release tag 生成；Release tag 入参可省略，未配置时使用 `latest`，例如：
@@ -62,12 +62,19 @@ Git push 与手动运行要区分：push 不接收 `workflow_dispatch` 的 `oper
 17. 所有自有 CI 脚本的成功日志都应参考 nginx-make 收敛：输出阶段标题、`[INFO]`、`[OK]` 和最终结果；Docker/BuildKit、Push、Pull 详细日志写入临时日志文件，失败时输出末尾足够定位问题的内容。第三方 Action 的系统日志不强行重写。
 18. Workflow 本身不得写入具体项目的镜像仓库、namespace 或 Release 名。项目个性化值放入 `.image-build.env`；未配置时使用仓库名推导 Release 名，镜像模块应明确跳过并说明原因。
 19. 如果项目内存在 Skill、文档或其他非构建目录，Workflow 的 push 触发器应通过 `paths-ignore` 排除这些目录；Skill 变更不应触发镜像构建，但仍应支持手动触发验证。
-20. 在 `image-make.yml` 的第一个 `lint` Job 中使用固定版本的 `actionlint` 校验 `.github/workflows/`，并运行最小 Release manifest 测试；`config`、Build、Package 和 Release 必须通过 `needs: lint` 串联。静态检查只负责 Workflow 语法和表达式，不代替真实 Docker 构建。
+20. 新建完整的 `image-make.yml` 时，在第一个 `lint` Job 中使用固定版本的 `actionlint` 校验 `.github/workflows/`，并运行最小 Release manifest 测试；`config`、Build、Package 和 Release 通过 `needs: lint` 串联。修复已有 Workflow 的局部问题时不强行重构 Job 图。静态检查只负责 Workflow 语法和表达式，不代替真实 Docker 构建。
 21. Release tag 必须限制为 `[A-Za-z0-9._-]+`，因为它同时用于 GitHub Release 标识和本地 Artifact 文件名；不要允许 `/`、空格或未处理的路径字符进入打包脚本。
 22. 如果 actionlint 必须阻断合并，必须在 GitHub Branch Protection 中将 `Image Make / Validate GitHub Actions workflows` 状态检查设为 required；同一 Workflow 内的 `needs: lint` 负责阻止当前 Push 继续构建。
 23. 第三方 Action 必须固定到 commit SHA；Docker 形式的 Action 必须固定到镜像 digest，并在升级时重新执行静态检查和最小测试。
 24. Workflow 默认权限必须是 `contents: read`，只有创建或更新 Release 的 Job 才能提升到 `contents: write`。HAP URL 只提供给配置检查/Release，AppKey 和 Sign 只提供给通知步骤。
 25. JavaScript Action 必须与当前 GitHub Actions Runner 的 Node.js 运行时兼容。出现 `Node.js 20 is deprecated` 或 `being forced to run on Node.js 24` 时，应定位对应的 Action 版本并升级到支持 Node.js 24 的版本，再固定完整 commit SHA；不要用 `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` 长期压制警告。升级后要检查所有 Job 中的重复引用、Runner 版本要求、`actionlint` 和实际 Workflow 运行结果。
+
+## 既有 Workflow 的告警与改造
+
+- 先按 Annotations 的原文区分 Runner 镜像迁移通知、Action 运行时弃用和实际构建错误，不把所有提示归咎于业务脚本。遇到 `ubuntu-latest` 迁移提示时，检查所有 Job 的 `runs-on` 及矩阵中的 Runner 值；若项目需要保持 Ubuntu 24.04，则将 x64 Job 固定为 `ubuntu-24.04`，保留原生 arm64 的 `ubuntu-24.04-arm`。不要仅为消除提示而无依据地升级到新系统镜像。
+- 对已有项目只修改导致问题的 Workflow/配置，不要求重建整套目录或强加本 Skill 的推荐命名。`actionlint` 只能做静态检查；Runner 和 Action 的平台通知要在新运行中核验，旧运行的 Annotations 不会因修改 YAML 消失。
+- 如果用户需要可选模块，分别控制 Build、Release、Webhook 等实际可选环节，默认值按项目要求设置；依赖未满足时明确跳过原因，不能把必需的架构构建任务合并掉。若用户要求清理历史运行，作为可选功能，仅在新运行成功后针对当前 Workflow 清理旧的已完成运行，保留当前运行与最新成功运行，不碰进行中的运行；删除运行记录不可恢复，未获授权不要主动增加清理逻辑。
+- Summary 必须来自实际解析结果和 Release 产物。展示所选模块、架构、依赖版本、Release tag 与真实附件下载链接；生成 Markdown 表格前检查 shell/YAML/JQ 插值是否真的执行，避免把 `(.name)`、`(.browser_download_url)` 或空值当成内容输出。
 
 ## 推荐目录
 
@@ -123,6 +130,8 @@ GitHub 配置入口统一为 `Settings → Secrets and variables → Actions`：
 
 README 必须区分三类默认值：手动 `workflow_dispatch` 输入默认值、项目 `.image-build.env` 默认值，以及没有默认值的必填配置。手动 `tag` 入参可省略，留空直接使用 `latest`，不回退到项目 `IMAGE_TAG`；push 事件才读取 Repository Variable 或 `.image-build.env` 的 `IMAGE_TAG`。镜像地址可以不带 Tag，由 Docker 解析为 `latest`；Workflow 和脚本不得自行追加 Tag。通用 Workflow 不得伪造项目镜像名；镜像地址或 Registry 等未配置时必须写明实际跳过行为。
 
+使用 HAP Webhook 时，在项目 README 给出与实际请求体一致的脱敏 JSON 范例，说明 `project_name` 的来源、可选模块开关以及 `attachment_urls` 为 JSON 字符串；不要写入真实 Webhook URL 或凭据。
+
 ## 通用性审计
 
 完成后必须对 Workflow 和 CI 脚本做一次项目脱敏检查：
@@ -169,13 +178,14 @@ Summary 中不得输出密码、Token、Webhook 签名或完整 Secret 值。
 
 ## 验证和交付
 
-实现后至少执行：
+按实际修改范围验证；创建完整 Workflow 时至少执行相关项：
 
 - Python `ast.parse` 或等价语法检查
 - `bash -n` 检查 CI Shell 脚本
 - `actionlint` 检查 GitHub Actions Workflow
+- 检查所有 Job 和矩阵 Runner 标签；有 Runner 迁移提示时，在新运行中核对各 Job 的 Annotations
 - 检查第三方 JavaScript Action 是否支持当前 Node.js Runner；不能遗留 Node.js 20 弃用警告
-- `python .github/image-make/test_release.py` 检查 Release manifest 来源和 digest 镜像识别
+- 若涉及 Release manifest，运行项目已有的 Release 测试（如 `python .github/image-make/test_release.py`）检查来源和 digest 镜像识别
 - `git diff --check`
 - 检查 Workflow 行为：push 的 `PUSH_OPERATION=auto`、push 指定三种模式、手动 build-release、手动 pull-release、手动 build-push-release、Aliyun 缺配置、HAP URL 缺失
 - 对 Workflow 和 CI 脚本执行通用性审计，确认没有残留当前项目默认值

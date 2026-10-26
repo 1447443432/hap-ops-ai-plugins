@@ -28,6 +28,7 @@
 - [ ] HAP payload 使用 nginx-make 兼容固定字段
 - [ ] `attachment_urls` 是 JSON 字符串，且只包含实际 Release 附件 URL
 - [ ] HAP 的架构文件名、下载地址和 SHA256 来自实际产物
+- [ ] 使用 HAP Webhook 时，README 有脱敏 JSON 范例，且 `project_name`、附件字段和开关说明与实现一致
 - [ ] 账号、密码、签名未写入仓库
 - [ ] README 说明 GitHub Variables/Secrets 的准确入口和字段名
 - [ ] HAP URL、AppKey、Sign 的配置位置和可选性已说明
@@ -44,7 +45,8 @@
 
 - [ ] amd64：`linux/amd64` + `ubuntu-24.04`
 - [ ] arm64：`linux/arm64` + `ubuntu-24.04-arm`
-- [ ] 每个独立 Job 都 checkout
+- [ ] 所有独立 Job 与矩阵 Runner 已核对；没有遗漏 `ubuntu-latest` 导致同一迁移提示在多个 Job 重复出现
+- [ ] 每个需要仓库文件的独立 Job 都 checkout
 - [ ] buildx Builder 显式可用
 - [ ] 正常构建 Job 的可视步骤已合并，登录和 Builder 初始化不重复展示
 - [ ] 成功构建不刷屏输出完整 BuildKit 日志，失败时保留可定位错误日志
@@ -68,6 +70,7 @@
 - [ ] config Summary 展示最终配置和跳过原因
 - [ ] amd64/arm64 Summary 展示平台、Runner、基础镜像和产物
 - [ ] Release Summary 展示镜像、Archive、SHA256、下载链接
+- [ ] Summary 的模块和依赖版本来自实际配置；Release 附件表没有 `(.name)` 等未求值字面量或虚构链接
 - [ ] Summary 不包含 Secret
 - [ ] 检查 push
 - [ ] 检查手动 build-release
@@ -76,6 +79,8 @@
 - [ ] 检查 Aliyun 缺账号密码
 - [ ] 检查 HAP URL 为空
 - [ ] `actionlint` 检查通过
+- [ ] 若修改 Runner 或 Action 以消除 Annotations，已在新运行中逐个 Job 核对；不以旧运行或静态检查代替
+- [ ] 若用户要求清理历史运行，仅在成功后清理当前 Workflow 的旧已完成运行，保留当前及最新成功运行，未触及进行中运行
 - [ ] `python .github/image-make/test_release.py` 检查通过
 - [ ] `image-make.yml` 的 lint Job 通过后才进入 config/Build/Package/Release
 - [ ] 需要阻断合并时，Branch Protection 已将 `Image Make / Validate GitHub Actions workflows` 设为必需检查

@@ -1,5 +1,13 @@
 # 常见失败模式
 
+## 多个 Job 重复出现 `ubuntu-latest` 迁移提示
+
+这是 GitHub 对 Runner 镜像标签即将切换的通知，不等同于构建失败。逐一检查 `runs-on` 和矩阵 `runner`；需要稳定在 Ubuntu 24.04 时，将 x64 Job 固定为 `ubuntu-24.04`，arm64 保持 `ubuntu-24.04-arm`。`actionlint` 通过并不代表平台通知已消失；只有新运行的 Annotations 能验证，旧运行会保留原有提示。
+
+## Release Summary 表格显示 `(.name)` 等字面量
+
+先检查 Markdown 行是在 shell/JQ 中实际求值，还是被 YAML、引号或转义变成了普通字符串。用真实 Release API 返回的附件对象生成名称和 `browser_download_url`，再检查表格内容与实际附件一致；不要用示例值填表。
+
 ## `context ".": context not found`
 
 通常是把构建目录配置命名为 `DOCKER_CONTEXT=.`。Docker CLI 将该环境变量当作 Docker Context 名称。改用 `BUILD_CONTEXT=.`，并在 build 脚本中传给 `docker buildx build` 的最后一个参数。
