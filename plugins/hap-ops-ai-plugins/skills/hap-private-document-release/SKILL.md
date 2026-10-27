@@ -39,16 +39,32 @@ Jenkins 构建 → 取镜像值 → 写「研发管理 → 发布 → 微服务�
 
 ## 步骤
 
+### 项目、分支、Jenkins job 与 HAP 服务映射
+
+发布 `hc` 和 `ophc` 必须严格使用下表映射，不能互换项目、分支、Jenkins job 或 HAP 服务记录：
+
+| 发布目标 | 代码项目 / branch | Jenkins job | HAP「更新的服务」记录 |
+|---|---|---|---|
+| `hc` | `Document` / `origin/dev` | `https://nextci.mingdao.net/job/document/`（job：`document`） | `hc-private`，service rowId：`ab28007a-36e1-4d2d-8e1f-6fb17ca28e92` |
+| `ophc` | `Document-ops` / `origin/master` | `https://nextci.mingdao.net/job/document-ops/`（job：`document-ops`） | `ophc-private`，service rowId：`3bf1c547-1479-4723-bcad-4c00c5e8589b` |
+
+HAP 服务表 `5dd7b13a44d0ca000162e790` 中，`hc-private` 对应源码仓库 `https://sourcecode.mingdao.net/private/Document`、镜像仓库 `hub.mingdao.com/private/hc`；`ophc-private` 对应源码仓库 `https://sourcecode.mingdao.net/private/Document-ops`、镜像仓库 `hub.mingdao.com/private/ophc`。创建申请时服务关联字段 `5e22b0e044a07d00010e102d` 传上表对应的 service rowId。
+
+每次触发前仍需核实本次项目 remote/branch、Jenkins job API 的规范 URL/SCM/参数以及目标 HAP 服务记录。构建后必须检查本次 `BRANCH` 和镜像仓库与上表完全一致。不一致或无法核实时停止，不得尝试另一 job/branch，也不得创建 HAP 记录。
+
 ### 1. 触发 Jenkins 构建
-前置：代码已推送目标分支（HAP_Document 远端走 sourcecode.mingdao.net）。
+前置：代码已推送到映射表指定项目和分支。当前工作目录不一定是目标项目，必须先核对 `git remote` 和 branch。
 ```bash
 CRUMB=$(curl -s -u "$JENKINS_USER:$TOKEN" "https://nextci.mingdao.net/crumbIssuer/api/json" | grep -o '"crumb":"[^"]*"' | cut -d'"' -f4)
 curl -u "$JENKINS_USER:$TOKEN" -H "Jenkins-Crumb: $CRUMB" -X POST \
-  "https://nextci.mingdao.net/job/<job>/buildWithParameters?BRANCH=origin/<branch>"
+  "https://nextci.mingdao.net/job/document/buildWithParameters?BRANCH=origin/dev"
+# For ophc, use: https://nextci.mingdao.net/job/document-ops/buildWithParameters?BRANCH=origin/master
 ```
-BRANCH 需带 `origin/` 前缀。保存 POST 响应的 `Location` queue URL，轮询该 queue item，直到返回 `executable.url` 和构建编号；后续只使用这个精确的 build URL，不要用 `lastBuild` 猜测编号或拼接嵌套 job 路径。若 API 返回 404，先用 job API 核对任务 URL 和 queue 返回的 build URL，禁止因为路径不确定而重复触发构建。
+crumb endpoint 位于 Jenkins 根路径，不能拼在 job URL 后。保存 POST 响应的 `Location` queue URL，轮询该 queue item，直到返回 `executable.url` 和构建编号；后续只使用这个精确的 build URL，不要用 `lastBuild` 猜测编号或拼接 job 路径。若 API 返回 404，先用 Jenkins 根 jobs API 和 job API 核对规范 URL，禁止因为路径不确定而重复触发构建。
 
 Windows 下若用 `curl` 查询带 `{}` 的 Jenkins `tree` 参数，必须加 `--globoff`；curl JSON 不要直接交给 PowerShell 默认编码的 `ConvertFrom-Json`，保存为 UTF-8 后用 Node/Python 解析。响应为空、非 JSON 或编码损坏时先报告查询异常，不要据此重触发构建。
+
+Jenkins `consoleText` 可能包含通知 token、Authorization header 或其它凭据。不得打印/转发整段控制台日志，也不得回显包含 `access_token`、`token`、`password`、`Authorization` 等字段的原始行；只抽取必要的构建结束标志、revision 和镜像地址。发现日志暴露凭据时，停止传播该值并提醒凭据管理员轮换。
 
 ### 2. 校验构建结果并从控制台尾部取值
 - 以 Jenkins 构建 API 为主判定：`building=false` 且 `result=SUCCESS`。
@@ -69,7 +85,7 @@ appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4
    - 创建前先设置默认应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。
    - 创建记录优先用多组 `-f CONTROL_ID=VALUE`，避免 Windows PowerShell 中 `--fields-json` 被引号转义破坏。关联记录、成员、单选/多选字段用单个 key/rowid/accountId 传给 `-f` 即可，由 `hap-cli` 按字段类型转换；不要把数组字段降级为逗号拼接字符串。
    - 如必须使用 `--fields-json`，不要在 PowerShell 中手写复杂 JSON 参数；应先用可靠方式生成 JSON 并确认传入 CLI 的是合法 JSON。遇到 `--fields-json is not valid JSON` 时，优先改用 `-f`，不要改业务字段值。
-   - 若创建被规则拦截，错误类似 `The record was not saved — the form refuses the write`，且仅因发布 SOP 必填字段（如“操作人”`5ba9e13b442bf3b958fa9ed3`、“服务更新状态”`5bac8d88442bf3b070e3436a`）不在新建表单上，可保持已确认字段不变，追加 `--ignore-rules` 重试。不要删除这些字段绕过规则。
+   - 若创建返回 `The record was not saved — the form refuses the write`，先依据错误确认是表单规则拦截，而非字段只读、权限或数据校验失败。只有确认属于表单规则拦截、且用户已确认的业务字段完全不变时，才可追加 `--ignore-rules` 重试；不得用它绕过只读/权限控制。特别是“操作人”`5ba9e13b442bf3b958fa9ed3` 为只读隐藏字段，不得强行写入；“服务更新状态”`5bac8d88442bf3b070e3436a` 不得在创建时设为“已更新”。若无法确认拦截类型则停止并报告。
    - `record get` 回读不要带 `--use-field-id-as-key`；该参数是 `record list` 的参数，`record get` 会报 `No such option '--use-field-id-as-key'`。
    - 创建结果以返回的 `data.rowid` 为准；即使顶层 `resultCode` 或 `error_code` 显示为 `1`，只要有 `data.rowid` 且没有错误对象，就保存该 rowid 继续回读，不要误判为创建失败。
 2. **不使用 HAP MCP**：
@@ -83,25 +99,32 @@ appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4
 2. **自动获取操作人**：优先从 `hap auth whoami --json` 或 `hap --json auth whoami` 的输出获取当前 HAP `accountId` 和姓名；若本机 `hap-cli` 不支持 JSON 输出，则用 `hap auth whoami` 人工核对当前账号，并通过 HAP 查询当前用户信息获取 accountId。写入字段 `5ba9e13b442bf3b958fa9ed3`。
 3. **打印待创建参数**：把完整待创建参数打印给用户确认。使用 `hap-cli` 时打印最终命令和字段 JSON/字段清单。至少包含 `appId`、`worksheet_id`、是否触发 workflow、全部 `fields` 的字段 ID、字段名说明和值。
 4. **等待明确确认**：只有用户明确回复“确认创建”“确认”“可以创建”等同意语义后，才能实际创建记录。用户只是补充参数、修改版本、询问或发测试内容时，禁止创建。
-5. **确认后不再改业务参数**：确认后如遇到 CLI 参数格式、表单规则、编码或回读参数问题，只能调整 `hap-cli` 调用方式（如 `--fields-json` 改 `-f`、追加 `--ignore-rules`、去掉不支持的回读参数），不得修改已确认的服务、版本、镜像 tag、操作人、环境、说明等业务内容；如确需修改业务内容，必须重新打印参数并再次等待确认。
+5. **确认后不再改业务参数**：确认后如遇到 CLI 参数格式、表单规则、编码或回读参数问题，只能调整 `hap-cli` 调用方式（如 `--fields-json` 改 `-f`、在确认属于表单规则拦截时追加 `--ignore-rules`、去掉不支持的回读参数），不得修改已确认的服务、版本、镜像 tag、操作人、环境、说明等业务内容；如确需修改业务内容，必须重新打印参数并再次等待确认。`--ignore-rules` 不得绕过只读或权限控制。
 
-| 字段 | ID | 取值 |
-|---|---|---|
-| 更新的服务（关联） | `5e22b0e044a07d00010e102d` | `/hc`→hc-private(`ab28007a-36e1-4d2d-8e1f-6fb17ca28e92`)、`/ophc`→ophc-private(`3bf1c547-1479-4723-bcad-4c00c5e8589b`)。其它服务先查服务列表 `5dd7b13a44d0ca000162e790` 取 rowId |
-| 服务版本号 | `5bbef4c8442bf3ca1009e7f6` | 镜像 tag |
-| 更新环境（多选） | `5ba9e0d4442bf3b958fa9eab` | 用户指定：生产/梅花/沙盒/沙盒2，传选项值数组如 `["生产"]` |
-| 紧急程度（评分） | `5da7fde89da28200014ce5fb` | 用户指定 1-5，传字符串如 `"3"` |
-| 版本（关联） | `5e2298bd681ea5000146c199` | 用户给版本号→查版本规划 `5cc5907771f24d00018030f7` 取 rowId；用户未给版本号→自动取最新已发布版本；**查询必带 viewId `5cc5907771f24d00018030f8`**，否则报 430028；标题字段 `5cc590776f3c6e0001e9b2d4`，命名如 `V12.3.0` |
-| 更新说明 | `5c77a4d1442bf213144e35ad` | 优先使用本次构建对应 Git 提交的简洁 subject；无法取得时回退 `V<版本> bugfix` |
-| 操作人（协作人） | `5ba9e13b442bf3b958fa9ed3` | 当前 HAP 账号 accountId，必须从 `hap-cli` 当前登录账号获取，传 accountId 数组 |
+| 字段 | ID | 类型/表单要求 | 取值 |
+|---|---|---|---|
+| 更新的服务 | `5e22b0e044a07d00010e102d` | Relation，必填 | `hc`→`hc-private` (`ab28007a-36e1-4d2d-8e1f-6fb17ca28e92`)，`ophc`→`ophc-private` (`3bf1c547-1479-4723-bcad-4c00c5e8589b`)；传服务表 rowId，不用显示名代替。其它服务实时查服务表 `5dd7b13a44d0ca000162e790` |
+| 服务版本号 | `5bbef4c8442bf3ca1009e7f6` | Text，必填 | Jenkins 本次构建镜像的 tag，不是语义版本 |
+| 更新环境 | `5ba9e0d4442bf3b958fa9eab` | MultipleSelect，可选；传 option key | `100`=沙盒，`1`=梅花，`10`=生产，`1000`=沙盒2。只用未删除选项；生产与其它环境分开申请，生产不会自动更新 |
+| 集群 | `617fc605a0673108fbc4ed66` | MultipleSelect，必填；传 option key | `4a43d6aa-623a-40e0-ad8b-25d2d0f8f306`=默认，`3a0cd7b6-95fa-418c-8c85-d22c3e0fd58b`=Nocoly，`2b4278bb-3459-47da-9e7c-9b5df97b4928`=代码块，`f0768f3c-db0a-4f3b-874e-566fbd195fa9`=消费，`756396e9-dde9-4380-bd3b-4c7020d2e0d0`=弹性集群（UK8S），`c081acef-c1d2-4ac6-91e9-c976a0bb1caa`=社区BBS专用环境。按字段描述匹配目标环境；hc/ophc 历史记录使用“默认” |
+| 紧急程度 | `5da7fde89da28200014ce5fb` | Rating，必填 | 用户指定 1-5，传字符串如 `"3"`；预览中展示星级含义 |
+| 配置 | `5bbee773442bf3ca1009e510` | SingleSelect，必填；传 option key | `10`=否，`1`=是；默认 `10`（否） |
+| Redis/Kafka | `62a7f157fe536211a3ab871b` | SingleSelect，必填；传 option key | `10`=否，`1`=是；默认 `10`（否） |
+| 版本 | `5e2298bd681ea5000146c199` | Relation，必填 | 用户给版本号→查版本规划 `5cc5907771f24d00018030f7` 取 rowId；用户未给版本号→自动取最新已发布版本；**查询必带 viewId `5cc5907771f24d00018030f8`**，否则报 430028；标题字段 `5cc590776f3c6e0001e9b2d4`，命名如 `V12.3.0` |
+| 更新说明 | `5c77a4d1442bf213144e35ad` | Text，必填 | 优先使用本次构建对应 Git 提交的简洁 subject；无法取得时回退 `V<版本> bugfix` |
+| 操作人 | `5ba9e13b442bf3b958fa9ed3` | Collaborator；只读、创建表单隐藏 | 从 `hap-cli whoami` 获取当前账号 accountId。若通过 CLI 赋值，创建后必须回读确认；若 API 拒绝只读字段，停止报告，不得用 `--ignore-rules` 绕过字段权限 |
+| 服务更新状态 | `5bac8d88442bf3b070e3436a` | SingleSelect；schema 必填、创建表单隐藏 | 有效 option：`1`=未更新、`10`=已更新、`0d98ed9a-5100-4b01-a499-5ffc6e71d8a0`=已废弃。不要在创建申请时预设“已更新”；由表单默认/工作流维护并在创建后回读 |
 
 **常用默认值**（用户不另行说明时以此为准，执行者可按各自约定调整）：
 | 字段 | ID | 默认 |
 |---|---|---|
-| 集群（多选） | `617fc605a0673108fbc4ed66` | 默认 |
-| 配置（单选） | `5bbee773442bf3ca1009e510` | 否 |
-| Redis/Kafka（单选） | `62a7f157fe536211a3ab871b` | 否 |
-| 服务更新状态（单选） | `5bac8d88442bf3b070e3436a` | 未更新 |
+| hc/ophc 集群 | `617fc605a0673108fbc4ed66` | 默认（key `4a43d6aa-623a-40e0-ad8b-25d2d0f8f306`）；若用户指定其它环境，以用户选择为准 |
+| hc/ophc 更新环境 | `5ba9e0d4442bf3b958fa9eab` | 生产（key `10`），基于近期已完成记录；预览时明确展示并允许用户改选 |
+| 配置 | `5bbee773442bf3ca1009e510` | 否（key `10`） |
+| Redis/Kafka | `62a7f157fe536211a3ab871b` | 否（key `10`） |
+| 服务更新状态 | `5bac8d88442bf3b070e3436a` | 不作为普通创建表单输入；不得将“已更新”（key `10`）设成创建默认值 |
+
+**表单传值规则**：单选/多选用当前 schema 的 option key，不用显示文字；Relation 用目标记录 rowId；Collaborator 用 accountId；Rating 用 1-5 字符串。多选按 hap-cli 对字段类型的数组/重复 `-f` 约定传值，禁止逗号拼接。执行发布前用 `hap worksheet fields <worksheetId>` 核对实时 schema；若 option key 或隐藏/只读标记与本表不同，以 live schema 为准并先停止更新本 skill，不得尝试旧 key。
 
 `triggerWorkflow=true`（走镜像 Tag 预检 + 后续发布流程）。这是**真实生产更新申请**，建成功后工作流/运维据此操作生产，执行前向用户确认无误。
 
