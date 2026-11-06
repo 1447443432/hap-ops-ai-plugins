@@ -1,0 +1,7 @@
+interface:
+  display_name: "HAP 软件包信息同步"
+  short_description: "校验并同步 HAP 软件包架构、版本和地址"
+  default_prompt: "使用 $hap-package-link-sync，从官方文档或结构化输入中提取 HAP 软件包信息，先读取目标表并生成变更清单；得到我明确确认后再通过 hap-cli 新增或更新记录。"
+
+policy:
+  allow_implicit_invocation: true

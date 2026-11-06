@@ -13,6 +13,7 @@
 - `skills/hap-mongodb-slowlog-analysis/`：MongoDB 4.4.x 慢日志分析、索引建议和可执行命令生成。
 - `skills/github-image-workflow-builder/`：创建、修复和验证 amd64/arm64 GitHub Actions 镜像构建、Release、镜像推送和 HAP Webhook Workflow。
 - `skills/nginx-https-cert-rotation/`：按 Nginx 安装路径、配置文件和证书路径生成 HTTPS 证书更换、校验与回滚手册。
+- `skills/hap-package-link-sync/`：读取 HAP 官方部署文档或结构化输入，校验并同步软件包架构、版本和地址。
 
 ## 扩展其他 skill
 
