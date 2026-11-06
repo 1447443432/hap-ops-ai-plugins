@@ -1,202 +1,156 @@
 ---
 name: github-image-workflow-builder
-description: 创建、修复和验证项目级 GitHub Actions 构建 Workflow，适用于 amd64/arm64 分开构建、可选镜像推送、Release 打包、Webhook 通知和按需清理运行记录。
+description: 创建、修复和验证项目级 GitHub Actions 镜像构建 Workflow，适用于 amd64/arm64 分开构建、可选镜像推送、Release 打包、Webhook 通知和按策略清理 Workflow 运行记录。
 metadata:
   short-description: 严谨构建和排障 GitHub 镜像 Workflow
 ---
 
 # GitHub Image Workflow Builder
 
-## 目标
+## 适用范围
 
-为当前项目创建一套可直接运行、可手动触发、可解释失败原因的 GitHub Actions 镜像 Workflow。默认按 amd64 和 arm64 分成两个矩阵任务，并使用对应架构的 Runner；除非用户明确要求，不创建统一的多架构 manifest。
+当用户要求创建、修改、排障或验证 GitHub Actions 镜像构建 Workflow 时使用本技能。常见任务包括：
 
-该 Skill 面向“项目内自包含”的 Workflow：不要默认引入外部共享 Workflow、Reusable Workflow 或公共配置仓库。CI 辅助脚本应放在项目的 `.github/image-make/`，不要污染已有的业务 `scripts/` 目录。
+- amd64 和 arm64 分开构建，并使用对应 Runner；
+- 构建、保存、推送镜像，生成 Release 附件；
+- 从已有镜像拉取后打包 Release；
+- 发送 HAP Webhook；
+- 清理 GitHub Actions 运行记录；
+- 分析 actionlint、Job skipped、权限、Artifact、Release、buildx 和镜像构建失败。
 
-三种运行模式必须保持语义一致：`build-release` 构建并打包创建 Release，`pull-release` 不构建而从已有阿里云镜像拉取后创建 Release，`build-push-release` 构建、推送阿里云并创建 Release。
+不用于只修改普通 Dockerfile、普通业务脚本或与 GitHub Workflow 无关的发布任务。
 
-Git push 与手动运行要区分：push 不接收 `workflow_dispatch` 的 `operation`，使用 `PUSH_OPERATION` 配置选择 `auto`、`build-release`、`pull-release` 或 `build-push-release`，默认是 `auto`。只有 `ENABLE_ALIYUN_PUSH=true` 且 Aliyun Registry、账号密码和目标镜像地址完整时，`auto` 才选择 `build-push-release`；否则自动降级为 `build-release`。指定具体模式时必须严格执行指定模式，不能因为缺少 Aliyun 凭据而偷偷改成其他模式。手动选择 `build-push-release` 时仍必须严格校验配置，手动选择 `pull-release` 时仍只要求完整的拉取配置。
+## 开始前检查
 
-## 何时使用
+先读取并保留用户已有改动，至少检查：
 
-用户要求以下任一项时使用：
+- `Dockerfile`、`.dockerignore`；
+- `.github/workflows/`；
+- `.github/image-make/`、`.image-build.env`；
+- `README.md`、Git 状态和远程分支。
 
-- 创建或修复 GitHub 镜像构建 Workflow
-- 分开构建 amd64 和 arm64 镜像
-- 使用原生 arm64 Runner，例如 `ubuntu-24.04-arm`
-- 将镜像保存为 Release 附件
-- 可选推送到阿里云或其他镜像仓库
-- 可选调用 HAP Webhook
-- 按要求清理 GitHub Actions 的历史运行记录
-- 排查 buildx、架构不匹配、Job skipped、Artifact、Release、Workflow Summary 或 Actions Annotations 问题
+不得把项目的镜像仓库、Release 名、Webhook 地址、账号或密码硬编码进通用 Workflow。项目专属值放在配置文件、Repository Variables 或 Secrets 中。
 
-不适用于单纯 Dockerfile 编写、普通业务脚本或只要求发布已有镜像而不涉及 GitHub Workflow 的任务。
+## 架构构建要求
 
-## 必须遵守的设计
+- amd64 使用 `linux/amd64` 和 `ubuntu-24.04`；
+- arm64 使用 `linux/arm64` 和原生 `ubuntu-24.04-arm`；
+- 除非用户明确要求，不使用 QEMU 在 amd64 Runner 上模拟 arm64；
+- `BASE_IMAGE_AMD64` 与 `BASE_IMAGE_ARM64` 独立解析和校验，不通过字符串替换推导架构镜像；
+- Dockerfile 保持可手动构建，CI 通过 `--build-arg BASE_IMAGE=...` 覆盖基础镜像；
+- buildx 必须显式初始化并使用明确的 Builder，不依赖空的 `BUILDX_BUILDER` 或隐式 Builder；
+- 第三方 Action 固定到完整 commit SHA；Docker 相关 Action 固定到经过验证的 digest 或完整 SHA。
 
-1. 先扫描项目：读取现有 Dockerfile、`.github/workflows/`、`.image-build.env`、`scripts/`、README 和 Git 状态；保留用户已有改动。
-2. 架构分开构建：
-   - amd64 使用 `linux/amd64` 和 `ubuntu-24.04`
-   - arm64 使用 `linux/arm64` 和 `ubuntu-24.04-arm`
-   - 不在 amd64 Runner 上用 QEMU 代替原生 arm64，除非用户明确要求
-3. 基础镜像按架构独立配置：`BASE_IMAGE_AMD64` 和 `BASE_IMAGE_ARM64` 可以完全不同，不能通过字符串替换猜测 arm64 镜像。
-4. Dockerfile 保持手动可构建：默认值应允许 `docker build .` 在当前平台工作；CI 通过 `--build-arg BASE_IMAGE=...` 覆盖架构基础镜像。
-5. 主镜像名只作为本地 Build、Save 和 Release 中的镜像引用：不为主镜像名登录或推送，除非用户明确要求主仓库 Push。镜像引用可以不带 Tag；不带 Tag 时由 Docker 按 `latest` 解析，脚本不得拼接 `:latest` 或其他 Tag。
-6. 阿里云 Push 是独立模块：`build-push-release` 只有在 `ENABLE_ALIYUN_PUSH=true` 且 Registry、账号密码和目标镜像完整时才执行 `docker tag` 与 `docker push`；缺少配置时必须阻断该模式的 Build、Package 和 Release。`build-release` 不依赖阿里云配置。
-   - Git push 默认使用 `PUSH_OPERATION=auto`：先按上述条件选择 `build-push-release`，条件不满足时选择 `build-release`，并在 Workflow Summary 写明自动降级原因。
-   - `PUSH_OPERATION` 指定具体模式时必须按指定模式执行；其中 `pull-release` 不得误启动 Build，`build-push-release` 缺配置时必须阻断后续步骤。
-7. `pull-release` 不依赖 `ENABLE_ALIYUN_PUSH`，只要 Registry、账号密码、主镜像和阿里云镜像地址完整，就从阿里云拉取并打包；阿里云目标地址留空时复用对应主镜像的完整引用，填写后按用户配置原样使用，不得单独默认成 `latest` 或从 Release tag 推导 Tag。
-8. Release 选择镜像来源：`pull-release` 和 `build-push-release` 的清单记录阿里云镜像地址，`build-release` 记录主镜像地址。Release-only 模式无法访问本地 Build 时，必须明确要求可拉取的阿里云镜像，或先执行 Build。
-9. HAP Webhook 必须使用 nginx-make 兼容的通用 JSON 协议：固定输出 `project_name`、`repository`、`version`、`tag`、`release_url`、`amd64_name`、`amd64_url`、`amd64_sha256`、`arm64_name`、`arm64_url`、`arm64_sha256`、`attachment_urls`、`commit_sha`、`run_id`、`run_url`、`build_status`；其中 `attachment_urls` 是 JSON 字符串，不是 JSON 数组。项目名从 `RELEASE_NAME` 或仓库名推导，不能把项目字段硬编码到 CI 引擎。
-10. HAP Webhook URL 为空或开关关闭时只跳过通知，并在 `$GITHUB_STEP_SUMMARY` 写出明确原因；不能因为 URL 为空而让 Release 失败。通知只在 Release 成功后发送。
-11. 每个需要读取仓库文件的独立 Job 都要 checkout 仓库。Job 之间只共享 Artifact 和 Job Outputs，不共享工作区文件。
-12. 不要使用保留环境变量名作为业务配置名。尤其不要把构建目录命名为 `DOCKER_CONTEXT`；Docker 会将其解释为 Docker Context 名称。使用 `BUILD_CONTEXT`。
-13. buildx 必须可靠初始化。不要依赖空的 `BUILDX_BUILDER` 或某个 Action 的隐式 Builder；构建脚本应明确选择或创建 Builder，并在构建时传 `--builder`。
-14. Artifact 名称按镜像最后一段和 Release tag 生成；Release tag 入参可省略，未配置时使用 `latest`，例如：
+默认不要创建多架构 manifest。除非用户明确要求，否则分别生成 amd64 和 arm64 镜像、Artifact 与 Release 附件。
 
-   ```text
-   hap-promtail-vlogs-mongodb-amd64:1.0.0
-   -> hap-promtail-vlogs-mongodb-amd64_1.0.0.tar.gz
-   ```
-15. Actions UI 步骤保持精简：推荐每个构建 Job 只保留 checkout、一个包含登录/Builder/Build/Push/Save 的构建步骤和 Artifact 上传；不要为每个正常动作拆出大量可视步骤。失败原因写入日志和 Summary 即可。
-16. Alpine 源和版本应可配置：使用 `ALPINE_MIRROR`、`ALPINE_VERSION`，不要把源地址散落在多个文件中；删除 `apk update` 与 `apk add --no-cache` 的重复索引刷新。
-17. 所有自有 CI 脚本的成功日志都应参考 nginx-make 收敛：输出阶段标题、`[INFO]`、`[OK]` 和最终结果；Docker/BuildKit、Push、Pull 详细日志写入临时日志文件，失败时输出末尾足够定位问题的内容。第三方 Action 的系统日志不强行重写。
-18. Workflow 本身不得写入具体项目的镜像仓库、namespace 或 Release 名。项目个性化值放入 `.image-build.env`；未配置时使用仓库名推导 Release 名，镜像模块应明确跳过并说明原因。
-19. 如果项目内存在 Skill、文档或其他非构建目录，Workflow 的 push 触发器应通过 `paths-ignore` 排除这些目录；Skill 变更不应触发镜像构建，但仍应支持手动触发验证。
-20. 新建完整的 `image-make.yml` 时，在第一个 `lint` Job 中使用固定版本的 `actionlint` 校验 `.github/workflows/`，并运行最小 Release manifest 测试；`config`、Build、Package 和 Release 通过 `needs: lint` 串联。修复已有 Workflow 的局部问题时不强行重构 Job 图。静态检查只负责 Workflow 语法和表达式，不代替真实 Docker 构建。
-21. Release tag 必须限制为 `[A-Za-z0-9._-]+`，因为它同时用于 GitHub Release 标识和本地 Artifact 文件名；不要允许 `/`、空格或未处理的路径字符进入打包脚本。
-22. 如果 actionlint 必须阻断合并，必须在 GitHub Branch Protection 中将 `Image Make / Validate GitHub Actions workflows` 状态检查设为 required；同一 Workflow 内的 `needs: lint` 负责阻止当前 Push 继续构建。
-23. 第三方 Action 必须固定到 commit SHA；Docker 形式的 Action 必须固定到镜像 digest，并在升级时重新执行静态检查和最小测试。
-24. Workflow 默认权限必须是 `contents: read`，只有创建或更新 Release 的 Job 才能提升到 `contents: write`。HAP URL 只提供给配置检查/Release，AppKey 和 Sign 只提供给通知步骤。
-25. JavaScript Action 必须与当前 GitHub Actions Runner 的 Node.js 运行时兼容。出现 `Node.js 20 is deprecated` 或 `being forced to run on Node.js 24` 时，应定位对应的 Action 版本并升级到支持 Node.js 24 的版本，再固定完整 commit SHA；不要用 `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` 长期压制警告。升级后要检查所有 Job 中的重复引用、Runner 版本要求、`actionlint` 和实际 Workflow 运行结果。
+## 运行模式和配置优先级
 
-## 既有 Workflow 的告警与改造
+如果项目支持多种运行模式，必须明确区分：
 
-- 先按 Annotations 的原文区分 Runner 镜像迁移通知、Action 运行时弃用和实际构建错误，不把所有提示归咎于业务脚本。遇到 `ubuntu-latest` 迁移提示时，检查所有 Job 的 `runs-on` 及矩阵中的 Runner 值；若项目需要保持 Ubuntu 24.04，则将 x64 Job 固定为 `ubuntu-24.04`，保留原生 arm64 的 `ubuntu-24.04-arm`。不要仅为消除提示而无依据地升级到新系统镜像。
-- 对已有项目只修改导致问题的 Workflow/配置，不要求重建整套目录或强加本 Skill 的推荐命名。`actionlint` 只能做静态检查；Runner 和 Action 的平台通知要在新运行中核验，旧运行的 Annotations 不会因修改 YAML 消失。
-- 如果用户需要可选模块，分别控制 Build、Release、Webhook 等实际可选环节，默认值按项目要求设置；依赖未满足时明确跳过原因，不能把必需的架构构建任务合并掉。
-- Summary 必须来自实际解析结果和 Release 产物。展示所选模块、架构、依赖版本、Release tag 与真实附件下载链接；生成 Markdown 表格前检查 shell/YAML/JQ 插值是否真的执行，避免把 `(.name)`、`(.browser_download_url)` 或空值当成内容输出。
+- `build-release`：构建并生成 Release；
+- `pull-release`：不构建，从指定已有镜像拉取并生成 Release；
+- `build-push-release`：构建、推送镜像并生成 Release。
 
-## 按需清理 Actions 运行记录
+Git push 与 `workflow_dispatch` 的输入必须区分。推荐使用 `PUSH_OPERATION=auto|build-release|pull-release|build-push-release`：
 
-- 先确认清理范围（Workflow、分支、成功/失败记录）和触发时机。若清理依附一次完整构建，优先参考项目现有 Workflow（如 nginx-make），在同一 YAML 的末尾加 Job；让它依赖必需的 Build、Release 和通知结果，并正确处理可选 Job 的 `skipped` 状态。只有明确需要独立定时或单独手动清理时才拆分 YAML。
-- 只给清理 Job `actions: write`。分页读取目标 Workflow 和分支的运行，删除早于本次运行且 `status=completed` 的记录；保留本次、更新、排队和运行中的记录。删除失败时明确记录失败数，不要误报清理完成。运行记录删除后，日志和关联 Artifact 一并消失；Release 附件仍在。
-- 同一 YAML 的清理 Job 运行时，本次 Workflow 尚未结束，不能严格保证“任何时刻都保留一条已完成且成功的运行”。若用户要求这个保证，应在 `workflow_run: completed` 事件后清理；若只要求成功构建链结束后收敛历史，同 YAML 的末尾 Job 即可。独立 YAML 首次提交不会自动产生 `workflow_run`，还要检查原构建 Workflow 的 `push.paths` 是否匹配这次提交。
-- 清理前核对 API 列出的候选运行 ID 和应保留的 ID；上线后检查 Job 日志、删除数和实际剩余记录。删除不可恢复，未获用户授权不要自行加入清理逻辑或清空历史。
+- `auto` 仅在 Aliyun Registry、目标镜像和认证配置完整时选择推送模式，否则降级为 `build-release`；
+- 手动指定具体模式时必须严格执行该模式，不能因缺少配置偷偷改成其他模式；
+- `pull-release` 不得误启动 Build；
+- `build-push-release` 缺少必要推送配置时必须阻止后续构建、打包和 Release，并在 Summary 说明缺失项。
 
-## 推荐目录
+推荐优先级：`workflow_dispatch` 输入 > Repository Variables > 项目配置文件 > Workflow 默认值。账号、密码、Webhook URL、AppKey、Sign 只允许来自 Secrets，不得写入仓库。
 
-```text
-.github/
-├── workflows/image-make.yml       # 触发器、Job、矩阵、权限和依赖
-└── image-make/
-    ├── config.py                   # 配置合并、模块判断、Summary
-    ├── build.sh                    # 单架构 Build、Tag、Push、Save
-    ├── package.sh                  # Artifact 校验或 Release-only 打包
-    └── release.py                  # manifest、下载链接和 Release Summary
+## Aliyun 镜像要求
+
+推送前必须校验：
+
+- Registry 地址非空且与目标镜像 Registry 一致；
+- 目标镜像包含 namespace 和 repository；
+- amd64、arm64 目标地址明确且架构对应；
+- Registry 登录使用 Secrets；
+- `docker tag` 和 `docker push` 使用完整目标地址，不自行拼接或强制追加 `latest`。
+
+缺少推送配置时，`build-release` 仍可独立工作；不要因为未配置推送而伪造镜像地址或让 Release 失败。
+
+## Release、Artifact 和 Summary
+
+- Release tag 只允许 `[A-Za-z0-9._-]+`，同时用于 Release 和 Artifact 文件名；
+- Artifact 名称由镜像最后一段、架构和 tag 生成，例如 `hap-alloy-vlogs-mongodb-amd64_1.0.0.tar.gz`；
+- Release manifest 必须根据实际 Artifact、镜像来源、架构和 SHA256 生成；
+- `pull-release` 和 `build-push-release` 的 manifest 记录 Aliyun 镜像，`build-release` 记录本地构建镜像；
+- Summary 展示实际 tag、Release 名、Dockerfile、Build context、基础镜像、目标镜像、模块状态、跳过原因、Artifact 名称和下载链接；
+- Summary、日志和 Webhook 不得输出密码、Token、签名或完整 Secret；
+- Webhook 仅在 URL、开关和必要凭据齐全且 Release 成功后发送；Webhook 跳过不应导致 Release 失败；
+- `attachment_urls` 若为兼容 HAP 的字段，应输出 JSON 字符串而不是 JSON 数组。
+
+## Workflow 运行记录清理
+
+只有在当前 Workflow 的构建、打包、Release 以及必要通知流程成功后，才运行清理 Job。清理 Job 必须使用：
+
+```yaml
+permissions:
+  actions: write
+  contents: read
 ```
 
-不要把这些 CI 脚本放入项目已有的 `scripts/`，除非该目录本来就是专门的 CI 工具目录。
+清理语义固定为：
 
-## 配置和优先级
+1. 当前 Job 执行时，当前 Workflow 通常仍是 `in_progress`，所以 GitHub API 的 `status=completed` 结果不包含当前运行；
+2. 使用 `github.run_id` 显式保护当前运行；
+3. 查询目标 Workflow 的所有 `status=completed` 运行；
+4. 删除除当前 `github.run_id` 外的全部已完成运行，包括 `success`、`failure`、`cancelled` 等结论；
+5. 当前运行、排队中和进行中的运行不得删除；
+6. 当前运行必须成功后才允许执行清理，这样最终只保留最新成功运行；
+7. 删除运行会同时删除其日志和关联 Artifact，但不会删除 GitHub Release 或 Release 附件；
+8. 清理失败不应使已经成功的构建或 Release 变成失败，建议清理 Job 使用 `continue-on-error: true`，同时在日志和 Summary 中明确报告删除失败。
 
-优先级必须在 README、Workflow Summary 和实现中保持一致。推荐：
+分页 API 必须使用以下思路，不能把 GitHub CLI 的 `--slurp` 和 `--jq` 同时使用：
 
-```text
-workflow_dispatch 输入
-> GitHub Repository Variables
-> .image-build.env
-> Workflow 默认值（`IMAGE_TAG` 为 `latest`，架构选择为 `all`）
+```bash
+completed_runs="$(
+  gh api --paginate "${endpoint}" \
+    | jq -s -r --arg current_run_id "${CURRENT_RUN_ID}" '
+      [.[].workflow_runs[]
+        | select(.status == "completed")
+        | select((.id | tostring) != $current_run_id)]
+      | .[]
+      | [.id, .run_number, .created_at]
+      | @tsv
+    '
+)"
 ```
 
-建议配置项：
+不能使用“按成功结论排序后保留第一条”的逻辑，因为清理 Job 执行时当前运行尚未完成，会把旧成功运行误认为最新成功运行。不能默认保留失败记录；是否保留失败记录必须由用户明确要求。
 
-```text
-IMAGE_TAG
-ARCHITECTURES
-PUSH_OPERATION
-RELEASE_NAME
-BASE_IMAGE_AMD64
-BASE_IMAGE_ARM64
-TARGET_IMAGE_AMD64
-TARGET_IMAGE_ARM64
-ALIYUN_REGISTRY
-ALIYUN_IMAGE_AMD64
-ALIYUN_IMAGE_ARM64
-ALPINE_MIRROR
-ALPINE_VERSION
-ENABLE_ALIYUN_PUSH
-ENABLE_RELEASE
-ENABLE_HAP_WEBHOOK
-DOCKERFILE
-BUILD_CONTEXT
-```
+清理脚本应使用 `set -euo pipefail`，避免 `head` 造成 SIGPIPE；删除前输出候选 ID 和当前保留 ID；删除后输出实际删除数量。删除循环最好收集单个删除失败并继续处理，最后通过 Summary 报告失败项。
 
-账号、密码、Webhook URL、签名只能来自 GitHub Actions Secrets，不得写入仓库配置文件。
+## 权限和 Job 依赖
 
-GitHub 配置入口统一为 `Settings → Secrets and variables → Actions`：非敏感项放 `Variables`，账号密码、Webhook URL、AppKey 和 Sign 放 `Secrets`。HAP 至少需要 `HAP_WEBHOOK_URL` 和 `ENABLE_HAP_WEBHOOK=true`；`HAP_WEBHOOK_APP_KEY`、`HAP_WEBHOOK_SIGN` 按接收端要求配置。配置后必须通过 `Actions → Image Make → Run workflow` 手动验证，并检查 config/Release Summary 的启用、跳过原因和 HAP 请求结果。
+- Workflow 默认权限为 `contents: read`；
+- 只有创建或更新 Release 的 Job 才提升到 `contents: write`；
+- 只有清理 Job 使用 `actions: write`；
+- 清理 Job 使用 `always()` 配合显式的上游结果判断，避免可选 Job 的 `skipped` 造成误判；
+- 每个需要读取仓库文件的独立 Job 都要自行 checkout；Job 之间只通过 Artifact 和 Outputs 共享结果，不依赖共享工作目录；
+- 清理 Job 不得依赖一个已经被清理的外部 Workflow。
 
-README 必须区分三类默认值：手动 `workflow_dispatch` 输入默认值、项目 `.image-build.env` 默认值，以及没有默认值的必填配置。手动 `tag` 入参可省略，留空直接使用 `latest`，不回退到项目 `IMAGE_TAG`；push 事件才读取 Repository Variable 或 `.image-build.env` 的 `IMAGE_TAG`。镜像地址可以不带 Tag，由 Docker 解析为 `latest`；Workflow 和脚本不得自行追加 Tag。通用 Workflow 不得伪造项目镜像名；镜像地址或 Registry 等未配置时必须写明实际跳过行为。
+## 验证和排障
 
-使用 HAP Webhook 时，在项目 README 给出与实际请求体一致的脱敏 JSON 范例，说明 `project_name` 的来源、可选模块开关以及 `attachment_urls` 为 JSON 字符串；不要写入真实 Webhook URL 或凭据。
+修改后按实际范围验证：
 
-## 通用性审计
+1. YAML 和表达式通过 `actionlint`；
+2. Python 脚本通过 `ast.parse` 或项目测试；
+3. Shell 脚本通过 `bash -n`；
+4. `git diff --check` 通过；
+5. 检查 Job、matrix、Runner、Outputs、Secrets、权限和 `if` 条件；
+6. 运行一次手动或推送 Workflow，核对每个 Job 的真实结论；
+7. 成功运行后检查 Actions 列表：应只剩当前最新成功运行，失败和取消的旧运行也应被删除；
+8. 检查清理 Job 日志，确认当前 `run_id` 未被删除、候选记录和删除数量符合预期；
+9. 若清理 Job 失败，先看其 API/JQ 日志，不要误判为 Docker 构建失败；
+10. 若看到 `--slurp option is not supported with --jq`，立即改为 `gh api --paginate ... | jq -s`；
+11. 若 Build 成功但 Workflow 失败，检查清理、通知和 Release Job 是否把非核心收尾错误传播到了 Workflow 总结。
 
-完成后必须对 Workflow 和 CI 脚本做一次项目脱敏检查：
+## 交付规则
 
-- 搜索项目仓库名、项目镜像名、namespace、客户名和固定业务域名
-- 除示例、注释和故障文档外，Workflow 不应出现当前项目的镜像仓库或 Release 名
-- 项目默认值只能位于 `.image-build.env` 或用户明确指定的配置文件
-- 未配置镜像地址时不得使用隐含的项目默认地址；应跳过模块并写出原因
-- Release 名未配置时应从 `GITHUB_REPOSITORY` 的仓库名推导
-- 复制到第二个项目时，只需修改配置文件和 Dockerfile，不应修改 CI 引擎脚本
+用户明确要求提交时才 commit；用户明确要求推送时才 push。提交前检查 Git 状态、差异和验证结果，提交后报告 commit、分支、Workflow run ID 和最终运行状态。不要声称本地未执行的 Docker 构建已经验证。
 
-通用性检查细则见 [references/genericity-audit.md](references/genericity-audit.md)。
-
-## Workflow Summary 要求
-
-配置 Job 至少展示：tag、Release 名、Dockerfile、Build context、两个基础镜像、两个主镜像名、每个模块状态和跳过原因。
-
-每个架构 Build Job 展示：架构、平台、Runner、基础镜像、本地镜像、Aliyun 目标或跳过原因、Release 包名。
-
-Release Job 展示：仓库、tag、架构、镜像引用、Artifact 文件名、SHA256、下载链接和 HAP 通知状态。Webhook payload 必须可直接作为 nginx-make 兼容 HAP Webhook 的请求体。
-
-Summary 中不得输出密码、Token、Webhook 签名或完整 Secret 值。
-
-## 排障顺序
-
-遇到失败时先按以下顺序定位：
-
-1. Workflow 是否解析成功，Job-level `if` 是否错误引用 `env`。
-2. `actionlint` 是否通过，尤其检查表达式、Job 输出和矩阵配置。
-3. Release tag 是否通过安全文件名校验。
-4. config Job 的 Outputs 是否为空，Summary 是否说明具体缺失项。
-5. 失败 Job 是否 checkout 了仓库。
-6. `DOCKER_CONTEXT`、`DOCKER_HOST`、`BUILDX_BUILDER` 等环境变量是否污染 Docker CLI。
-7. 基础镜像 Registry 是否正确解析；Docker Hub 不应被当作镜像名登录。
-8. setup-buildx 是否成功，构建脚本是否明确指定 Builder。
-9. 基础镜像是否真的存在、可访问且平台正确。
-10. Artifact 是否在上游成功上传，名称是否与下游下载名称一致。
-11. Release manifest 是否按实际 Artifact 文件名正确识别 amd64/arm64 和实际镜像来源。
-12. HAP payload 是否包含固定字段、附件 URL 是否为 JSON 字符串、架构附件和 SHA256 是否来自实际 Release 产物。
-13. HAP 通知是否只在 URL 和开关都满足时执行。
-14. 如果 Annotations 提示 JavaScript Action 的 Node.js 20 已弃用，检查 Action 的 SHA 对应版本；这通常暂时只是警告，但 Node.js 20 被移除后可能变成运行失败，应升级 Action，不要误判为业务配置错误。
-
-常见故障和对应检查见 [references/failure-patterns.md](references/failure-patterns.md)。完整交付检查见 [references/workflow-checklist.md](references/workflow-checklist.md)。
-
-## 验证和交付
-
-按实际修改范围验证；创建完整 Workflow 时至少执行相关项：
-
-- Python `ast.parse` 或等价语法检查
-- `bash -n` 检查 CI Shell 脚本
-- `actionlint` 检查 GitHub Actions Workflow
-- 检查所有 Job 和矩阵 Runner 标签；有 Runner 迁移提示时，在新运行中核对各 Job 的 Annotations
-- 检查第三方 JavaScript Action 是否支持当前 Node.js Runner；不能遗留 Node.js 20 弃用警告
-- 若涉及 Release manifest，运行项目已有的 Release 测试（如 `python .github/image-make/test_release.py`）检查来源和 digest 镜像识别
-- `git diff --check`
-- 检查 Workflow 行为：push 的 `PUSH_OPERATION=auto`、push 指定三种模式、手动 build-release、手动 pull-release、手动 build-push-release、Aliyun 缺配置、HAP URL 缺失
-- 对 Workflow 和 CI 脚本执行通用性审计，确认没有残留当前项目默认值
-- 如本机没有 Docker，明确说明未执行真实镜像构建，不要声称构建已验证
-
-用户要求提交时才执行 commit/push；提交前检查 `git status`，提交后报告 commit id 和目标分支。
+项目专属说明应写入项目 README；本技能只保留通用规则，不写入具体仓库名、镜像地址、客户地址或凭据。
