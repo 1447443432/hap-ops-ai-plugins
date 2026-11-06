@@ -7,13 +7,13 @@ metadata:
 
 # HAP 软件包信息同步
 
-用于维护 HAP 私有部署软件包信息表。此 skill 只负责读取文档、比对表记录并写入软件包元数据和地址，不负责文件传输或文件内容验证。
+用于维护 HAP 私有部署软件包信息表。此 skill 只负责读取指定页面中的软件包表格、比对表记录并写入软件包元数据和地址，不负责文件传输或文件内容验证。
 
 ## 功能介绍
 
 这个 skill 用来把 HAP 官方部署文档中的软件包信息同步到指定工作表，主要处理：
 
-- 读取官方文档中的软件包名称、版本、架构和完整地址；
+- 只读取指定页面中 `x86_64/AMD64` 和 `ARM64/AARCH64` 两个安装包下载表格中的软件包名称、版本、架构和完整地址；
 - 读取目标表字段和现有记录；
 - 判断记录是已存在、需要新增、需要更新地址，还是只需追加名称备注；
 - 支持 amd64/x86_64 与 arm64/aarch64 分开处理；
@@ -21,6 +21,30 @@ metadata:
 - 仅在用户明确授权后，通过 `hap-cli` 执行新增或更新。
 
 它不会下载或上传软件包，也不会在未确认时修改目标表。
+
+## Windows UTF-8 输出约束
+
+本 skill 在 Windows PowerShell 中执行时，必须先固定终端输入、输出和文件读取编码，避免中文字段名、清单和日志显示为乱码：
+
+```powershell
+[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+chcp 65001 > $null
+```
+
+- 读取 Markdown、YAML、JSON、技能文件时，必须显式指定 UTF-8，例如 `Get-Content -Encoding UTF8` 或 `[System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)`。
+- 写入文本时使用 UTF-8 无 BOM；不得使用未指定编码的 `>`、`>>`、`Out-File` 或 `Set-Content` 覆盖中文文件。
+- `hap-cli --json` 的原始 JSON 必须按 UTF-8 解析后再提取字段；不要把终端乱码文本当作真实数据。
+- 使用 PowerShell 抓取网页时，不得直接信任 `Invoke-WebRequest`.Content 的自动编码判断；官方页面响应必须从原始字节按 UTF-8 解码，再解析 HTML 表格。例如：
+
+  ```powershell
+  $response = Invoke-WebRequest -UseBasicParsing $url
+  $html = [System.Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray())
+  ```
+
+- 若终端仍显示乱码，先停止比对和写入，改用 UTF-8 文件读取或结构化 JSON 解析；不得依据乱码内容生成变更清单。
+- 输出给用户的清单使用真实中文和完整 URL；不要把调试命令输出原样当作结果。
 
 ## 默认简洁指令
 
@@ -121,7 +145,11 @@ R1 追加备注：docker-(k8s 1.25)
 读取官方文档时：
 
 - 提取表格中真实链接的 `href`，不能只复制页面显示文本。
-- 按 amd64/x86_64 与 arm64/aarch64 分组，每个架构生成独立输入项。
+- 来源范围严格限制为当前页面的两个架构表格：`各软件的 x86_64/AMD64 安装包下载链接` 和 `各软件的 ARM64/AARCH64 安装包下载链接`。
+- 只解析这两个表格的当前 DOM/HTML 内容；不得点击、抓取或合并页面中的其他文档链接、导航页、组件页、历史版本页或外部下载页的额外条目。
+- 按表格所属架构分组，每个架构生成独立输入项；架构必须来自表格分组，不得从其他页面或 URL 猜测。
+- 架构例外：`Elasticsearch-ik` 和 `VictoriaLogs 数据源插件` 固定映射为目标表单选项 `通用`。这两个软件即使同时出现在 AMD64 和 ARM64 表格中，也必须先按软件包身份合并为一条逻辑输入，不能按两个架构新增两条记录。
+- 架构例外清单以后只允许在用户明确补充并确认后扩展；未列入清单的软件仍严格使用页面所属架构。
 - 保留完整 URL、文件名和查询参数，不因页面换行而截断。
 - 同时记录文档中的软件包名称、版本和分组信息，用于判断软件包身份。
 
@@ -135,6 +163,7 @@ R1 追加备注：docker-(k8s 1.25)
 - 使用本机认证缓存完成登录检查，不要求用户把 token 粘贴到对话或项目文件中。
 - 读取目标工作表字段，确认字段类型可写。
 - 分页读取目标表的全部现有记录，不能只读取第一页；至少取得记录 ID、名称、版本、架构、HAP 地址、源地址和备注。
+- 现有记录的架构是必填比对字段；如果接口返回空值、无法解析选项 key 或只剩下乱码，必须标记为数据异常并停止写入，不能仅凭 URL 文件名推断后新增或更新。
 - 记录字段 ID 和原始值，后续更新只能针对明确的记录 ID。
 
 如果 `hap-cli` 不可用、未登录、目标表字段无法确认或查询结果不完整，停止，不进行写入。
