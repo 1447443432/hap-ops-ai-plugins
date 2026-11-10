@@ -15,11 +15,17 @@
 | 新证书来源 | /data/mdtemp/new-certificate.crt | 🟨 待确认 |
 | 新私钥来源 | /data/mdtemp/new-private-key.key | 🟨 待确认 |
 | 访问域名 | <待补充域名> | 🟨 待确认 |
-| HTTPS 端口 | 443 | 🟨 待确认（未提供端口时默认 443） |
+| HTTPS 外部访问端口 | 443 | 🟨 待确认（没有完整 HTTPS URL 或显式端口时，按默认值处理） |
 
 状态图例：🟩 已确认（用户明确提供）；🟨 待确认（默认值、示例或需要现场核验）；🟥 缺失（不能据此生成精确替换命令）。
 
 目录就是文件夹；绝对路径就是从 / 开始的完整文件位置；备份就是先复制一份旧文件。
+
+### 多个入口使用不同证书或私钥时
+
+每个入口单独建立醒目的 Markdown 二级标题（`##`），标题使用对应的访问 URL origin（例如 `https://example.com:8443`）。每个分支从参数摘要开始，独立完成活动配置确认、备份、证书与私钥校验、替换、`nginx -t`、重载、入口验证和回滚。即使共用同一个 Nginx，也不能把分支步骤合并。
+
+每个分支各自使用一张参数摘要表，不能把不同分支的值横向排进同一张宽表。用户提供或已从活动配置确认的所有文件路径，在表格、说明、命令和结果中都写完整绝对路径，不缩写为文件名。每个分支的命令只操作该分支对应的配置、证书和私钥。
 
 ### 多入口共用同一证书时
 
@@ -187,11 +193,11 @@ systemctl restart nginx
 
 **目的：** 确认用户实际访问到新证书。
 
-有域名时，把 `<实际域名>` 和 `<实际HTTPS端口>` 换成真实值。未提供端口时，`<实际HTTPS端口>` 使用 443；如果用户输入了 `:8443` 或完整的 `https://域名:8443/`，下面所有验证命令都使用 8443：
+有完整 HTTPS URL 时，原样使用该访问地址进行外部验证：`https://域名/` 的外部端口为 443，标为 🟩 已确认；若 URL 明确写了 `:8443`，验证命令使用 8443。只有未提供 scheme 和端口时才按默认 443 并标为 🟨 待确认。通过 `nginx -T` 另行确认 Nginx 本地 `listen ... ssl` 端口；有 CDN、WAF、负载均衡或端口映射时，不要把源站端口当作外部端口：
 
 ~~~bash
-curl -Iv https://<实际域名>:<实际HTTPS端口>/
-openssl s_client -connect <实际域名>:<实际HTTPS端口> -servername <实际域名> </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+curl -Iv <用户提供的完整HTTPS访问地址>
+openssl s_client -connect <实际域名>:<外部HTTPS端口> -servername <实际域名> </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 ~~~
 
 **正常结果：** 浏览器没有证书警告，域名匹配，有效期已更新，业务页面可以打开。
@@ -238,5 +244,3 @@ cp -p -- <ssl_certificate_key>.YYYYMMDDHHMMSS.bak <ssl_certificate_key>
 
 - [如何配置代理 | HAP 私有部署](https://docs-pd.mingdao.com/hap/deployment/proxy/nginx_default/)
 - [HTTPS | HAP 私有部署](https://docs-pd.mingdao.com/hap/deployment/proxy/https/)
-
-说明：HAP 官方文档使用 `/hap/` 前缀，请保留上面的完整地址，不要遗漏 `/hap/`，也不要把它误写成 `/deployment/proxy/hap/...`。
