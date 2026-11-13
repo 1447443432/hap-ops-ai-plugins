@@ -34,7 +34,7 @@ CLUSTER_HEADINGS = [
     "### 5. 检查资源",
 ]
 
-# 集群升级前准备必须复用 WorkBuddy 集群成品的固定结构；数据库名称按现场实际情况替换。
+# 集群升级前准备必须复用固定结构和固定备份文案。
 CLUSTER_PREP_EXACT_LINES = (
     '> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。若目标版本（**',
     '请检查您的授权密钥是否仍在"升级服务"有效期内，并确认授权到期日晚于目标版本发布日期。若授权即将到期或已过期，请联系明道云商务团队续期后再执行升级。',
@@ -47,7 +47,7 @@ CLUSTER_PREP_EXACT_LINES = (
 )
 
 CLUSTER_BACKUP_PATTERN = re.compile(
-    r"对数据存储相关的服务器进行备份，确保以下组件的数据均已备份：MongoDB、(?:[^。\n]+、)?文件存储服务及其他有状态服务。"
+    r"对数据存储相关的服务器进行备份，确保以下组件的数据均已备份：MongoDB、Mysql、文件存储服务及其他有状态服务。"
 )
 
 FUNCTIONAL_CHECKLIST = [
@@ -146,7 +146,7 @@ def main() -> int:
             if required_line not in text:
                 errors.append(f"集群升级前准备必须与 WorkBuddy 集群成品逐条一致，缺少固定文案：{required_line}")
         if not CLUSTER_BACKUP_PATTERN.search(text):
-            errors.append("集群数据备份必须保留 WorkBuddy 固定句式，并按现场实际情况写明关系型数据库名称")
+            errors.append("集群数据备份必须严格使用固定文案：MongoDB、Mysql、文件存储服务及其他有状态服务")
         auth_lines = [line for line in lines if line.startswith('> ⚠️ **重要提示**：请确保您的授权密钥仍在"升级服务"有效期内。若目标版本（**')]
         if len(auth_lines) != 1:
             errors.append("集群授权有效期检查必须保留 WorkBuddy 集群成品的完整重要提示，不能压缩或改写")
