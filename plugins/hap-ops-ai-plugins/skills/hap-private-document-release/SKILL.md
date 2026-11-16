@@ -1,17 +1,17 @@
 ---
 name: hap-private-document-release
-description: HAP Private Document 更新发布 SOP（标准流程）。从 Jenkins 构建到写入「研发管理-发布-微服务」工作表并核验的端到端发布流程。触发：用户提到"发布微服务""更新发布""更新 hc/ophc""HAP Private Document 更新""触发 document 构建并上线""按发布 SOP 走""走标准发布流程"等。涉及提交身份、Jenkins 用户名/token 等认证信息时，一律提示用户当场授权或输入，绝不硬编码——本 skill 可多人多机共用。
+description: HAP Private Document 更新发布 SOP（标准流程）。从 Jenkins 构建到写入「研发管理-发布-微服务」工作表并核验的端到端发布流程。触发：用户提到"发布微服务""更新发布""更新 hc/ophc""HAP Private Document 更新""触发 document 构建并上线""按发布 SOP 走""走标准发布流程"等。认证凭据优先复用执行者本机安全凭据存储和 hap-cli profile；绝不写入 skill、仓库或日志。
 ---
 
 # HAP Private Document 更新发布 SOP（标准流程）
 
 Jenkins 构建 → 取镜像值 → 写「研发管理 → 发布 → 微服务」工作表 → 工作流自动发布 → 读回核验。
 
-> 本 skill 不含任何账号、邮箱、token 等个人凭据，均由执行者当场提供；这些只存在各自本机记忆里。
+> 本 skill 不含任何账号、邮箱、token 等个人凭据。凭据可由执行者明确授权后保存在各自本机的系统安全凭据存储或 hap-cli profile 中；严禁写入 skill、仓库文件、命令历史、日志或提交记录，也不得打印凭据值。
 
 ## 初次使用准备（首次必做，缺一不可）
 
-第一次在某仓库/某会话执行前，先确认并向用户索取以下两项，缺失则停下来让用户填写或授权：
+第一次在某仓库执行前，确认提交身份和本机认证配置。已有有效配置时直接复用，不重复询问；仅在缺失或验证失败时向用户请求补充/重新授权：
 
 1. **提交身份（commit author）**：检查目标仓库 local 身份
    ```bash
@@ -22,19 +22,19 @@ Jenkins 构建 → 取镜像值 → 写「研发管理 → 发布 → 微服务�
    git -C <repo> config --local user.name  "<用户提供的名字>"
    git -C <repo> config --local user.email "<用户提供的邮箱>"
    ```
-2. **Jenkins 凭据**：向用户索取其 Jenkins **登录用户 id**（注意是用户 id，不是邮箱；带域名可能 500）和 **API token**，或让用户用 `! <命令>` 自行运行带凭据的 curl。凭据仅在本次会话内存使用，不写盘、不写入 skill。
+2. **Jenkins 凭据**：先从 Windows Credential Manager 读取目标 `Codex/Jenkins/nextci.mingdao.net`（用户名为 Jenkins 登录 user id，不是邮箱；带域名可能 500）。凭据只在进程内存中用于认证，不输出到终端或日志。仅当目标不存在或认证明确返回 401/403 时，才向用户请求 Jenkins user id/API token；用户授权后写入当前 Windows 用户的 Credential Manager，供后续复用。不要用明文文件、环境变量持久化、Git 配置或 PowerShell 命令行参数存储 token。其他操作系统使用系统原生安全凭据存储；若不可用则当次询问，不得退化为明文落盘。
 
 两项就绪后再进入下面的步骤。
 
-## 认证（每次都要用户提供，不硬编码）
+## 认证（优先复用本机安全凭据）
 
-- **Jenkins**：`https://nextci.mingdao.net/`，basic-auth 用 `<JENKINS_USER>:<TOKEN>`，由用户提供。
+- **Jenkins**：`https://nextci.mingdao.net/`。先读取 Windows Credential Manager 的 `Codex/Jenkins/nextci.mingdao.net`，并用存储的用户名和 token 做认证；只有未配置或认证返回 401/403 时才请用户重新授权并更新本机凭据。不得回显 token、拼接并打印 `user:token`、将凭据写入脚本/文件/skill/仓库或提交记录。
 - **HAP 数据连接固定使用 `hap-cli`**：本 SOP 的 HAP 查询、创建、回读和核验一律使用 `hap-cli`，不要在 `hap-cli` 可用时切换到 HAP MCP。
-  1. 先运行 `hap auth whoami` 或 `hap --profile <profile> auth whoami --json` 确认当前 HAP 登录态、账号、组织和环境。若未安装 `hap`、未登录、当前账号/环境不对，先引导用户执行 `hap auth login`、`hap auth accounts`、`hap auth use <profile>` 或 `hap auth set-current-org <ORG_ID>`。
+  1. 先运行 `hap auth accounts` 查看本机 profile，优先用 `prod`，并通过 `hap --profile prod auth whoami --json` 确认账号、组织、环境；本机已有有效且身份/组织正确的 profile 时直接复用，不重复询问登录信息。必要时 `hap auth use prod`，涉及命令均显式指定 `--profile prod`。
   2. 使用 `hap-cli` 读写 HAP 工作表时，脚本化场景必须加 `--json`，并在写入前确认当前应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。可用 profile 时所有命令都带 `--profile <profile>`。
   3. `record create` 支持 `-a/--app-id`，但发布记录创建前仍必须先执行 `hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`，避免默认应用为空或指错应用。`record get` 不支持 `--use-field-id-as-key`，回读时直接读取原始字段 ID。
   4. Windows 下执行 `hap-cli` 前设置 `PYTHONIOENCODING=utf-8`；JSON 输出保存到 UTF-8 文件后再解析，避免中文响应被 GBK 破坏。不要根据乱码、空输出或控制台编码异常直接判断请求失败。
-  5. 如果 `hap auth whoami` 报 token 缺失、无效或过期，停止 HAP 操作并让用户重新执行 `hap auth login`（推荐 PAT）；重新登录成功并核对账号、组织、环境后再继续。不要切到 HAP MCP，也不要把 token 打印到日志。
+  5. 若 `prod` profile 未登录、过期或 `whoami` 返回认证失败，先告知用户需要在 HAP 登录页面完成一次确认，然后启动 `hap auth login mingdao --profile prod --force --timeout 180`。该命令会打开/引导浏览器授权；不要尝试绕过页面确认、伪造回调或反复提交登录。等待用户在页面完成账号登录及授权，并等待 hap-cli 收到回调；若命令等待期间需要用户操作，明确提示当前页面和待完成动作，不要提前判定成功。回调成功后立即执行 `hap --profile prod auth whoami --json`，核对用户、组织和 production 环境正确，再继续发布。hap-cli 会将认证保存在本机 profile 中；不要复制/打印 token。若页面未打开、用户无法完成确认或授权超时，停止 HAP 读写并报告；可询问用户是否改用 HAP 专用 PAT 登录，不得默认切换。Jenkins API token 不是 HAP PAT，严禁跨系统复用。
   6. 禁止把 HAP MCP 作为发布记录读写 fallback。只有用户明确要求改用 MCP，或本机没有 `hap-cli` 且用户确认允许改用 MCP 时，才使用 HAP MCP；否则应停止并报告 `hap-cli` 阻塞原因。
 
 ## 步骤
@@ -54,15 +54,12 @@ HAP 服务表 `5dd7b13a44d0ca000162e790` 中，`hc-private` 对应源码仓库 `
 
 ### 1. 触发 Jenkins 构建
 前置：代码已推送到映射表指定项目和分支。当前工作目录不一定是目标项目，必须先核对 `git remote` 和 branch。
-```bash
-CRUMB=$(curl -s -u "$JENKINS_USER:$TOKEN" "https://nextci.mingdao.net/crumbIssuer/api/json" | grep -o '"crumb":"[^"]*"' | cut -d'"' -f4)
-curl -u "$JENKINS_USER:$TOKEN" -H "Jenkins-Crumb: $CRUMB" -X POST \
-  "https://nextci.mingdao.net/job/document/buildWithParameters?BRANCH=origin/dev"
-# For ophc, use: https://nextci.mingdao.net/job/document-ops/buildWithParameters?BRANCH=origin/master
-```
-crumb endpoint 位于 Jenkins 根路径，不能拼在 job URL 后。保存 POST 响应的 `Location` queue URL，轮询该 queue item，直到返回 `executable.url` 和构建编号；后续只使用这个精确的 build URL，不要用 `lastBuild` 猜测编号或拼接 job 路径。若 API 返回 404，先用 Jenkins 根 jobs API 和 job API 核对规范 URL，禁止因为路径不确定而重复触发构建。
+使用 Jenkins API 时，从系统凭据存储在内存中读取认证信息。Windows/.NET 环境先加载 `System.Net.Http` 再创建 `HttpClient`，关闭触发 POST 的自动重定向；crumb 从 Jenkins 根路径 `https://nextci.mingdao.net/crumbIssuer/api/json` 获取，不要拼到 job URL 下。按映射表对 job 和 branch 只 POST 一次，并保存响应中的 queue `Location`。
+crumb endpoint 位于 Jenkins 根路径，不能拼在 job URL 后。保存 POST 响应的 `Location` queue URL，轮询该 queue item，直到返回 `executable.url` 和构建编号；后续只使用这个精确的 build URL，不要用 `lastBuild` 猜测编号或拼接 job 路径。若 API 返回 404，先用 Jenkins 根 jobs API 和 job API 核对规范 URL，禁止因为路径不确定而重复触发构建。若 POST 后出现客户端异常、空响应或重定向处理异常，视为“触发结果不确定”：先查本次 queue/job 的队列状态并对账，确认没有对应 queue item 后才能决定下一步；禁止直接重发 POST，以免重复构建。
 
 Windows 下若用 `curl` 查询带 `{}` 的 Jenkins `tree` 参数，必须加 `--globoff`；curl JSON 不要直接交给 PowerShell 默认编码的 `ConvertFrom-Json`，保存为 UTF-8 后用 Node/Python 解析。响应为空、非 JSON 或编码损坏时先报告查询异常，不要据此重触发构建。
+
+Windows PowerShell 的 .NET HTTP 实现需先执行 `Add-Type -AssemblyName System.Net.Http`，避免 `HttpClient` 类型未加载。避免依赖 `Invoke-WebRequest` 的自动重定向/异常响应对象提取 Jenkins queue `Location`；POST 状态或响应解析不明确时必须先对账，不可重发。
 
 Jenkins `consoleText` 可能包含通知 token、Authorization header 或其它凭据。不得打印/转发整段控制台日志，也不得回显包含 `access_token`、`token`、`password`、`Authorization` 等字段的原始行；只抽取必要的构建结束标志、revision 和镜像地址。发现日志暴露凭据时，停止传播该值并提醒凭据管理员轮换。
 
@@ -85,7 +82,7 @@ appId `86892856-1fb7-4cee-b4a9-36caa9e8798a`，worksheet `5ba9e096ca6edd0001c9d4
    - 创建前先设置默认应用：`hap app select 86892856-1fb7-4cee-b4a9-36caa9e8798a`。
    - 创建记录优先用多组 `-f CONTROL_ID=VALUE`，避免 Windows PowerShell 中 `--fields-json` 被引号转义破坏。关联记录、成员、单选/多选字段用单个 key/rowid/accountId 传给 `-f` 即可，由 `hap-cli` 按字段类型转换；不要把数组字段降级为逗号拼接字符串。
    - 如必须使用 `--fields-json`，不要在 PowerShell 中手写复杂 JSON 参数；应先用可靠方式生成 JSON 并确认传入 CLI 的是合法 JSON。遇到 `--fields-json is not valid JSON` 时，优先改用 `-f`，不要改业务字段值。
-   - 若创建返回 `The record was not saved — the form refuses the write`，先依据错误确认是表单规则拦截，而非字段只读、权限或数据校验失败。只有确认属于表单规则拦截、且用户已确认的业务字段完全不变时，才可追加 `--ignore-rules` 重试；不得用它绕过只读/权限控制。特别是“操作人”`5ba9e13b442bf3b958fa9ed3` 为只读隐藏字段，不得强行写入；“服务更新状态”`5bac8d88442bf3b070e3436a` 不得在创建时设为“已更新”。若无法确认拦截类型则停止并报告。
+  - 若创建返回 `The record was not saved — the form refuses the write` / `RuleBlocked`，先确认响应表示未写入，再读取 `hap worksheet rules <worksheetId>` 核实当前规则。近期遇到“验证规则1”对“更新环境”比较值 `28` 的 CLI 规则解析限制；规则语义要求生产环境独立申请，不与沙盒/梅花合并。只有当实时规则确认该语义、且本次申请仅选生产时，才允许使用完全相同的已确认字段加 `--ignore-rules` 重试一次。若规则内容不同、包含混合环境、错误可能为只读/权限/字段校验，或不能确认未写入，则停止并报告；不得把此例外泛化为忽略任意规则。特别是“操作人”`5ba9e13b442bf3b958fa9ed3` 为只读隐藏字段，不得强行写入；“服务更新状态”`5bac8d88442bf3b070e3436a` 不得在创建时设为“已更新”。
    - `record get` 回读不要带 `--use-field-id-as-key`；该参数是 `record list` 的参数，`record get` 会报 `No such option '--use-field-id-as-key'`。
    - 创建结果以返回的 `data.rowid` 为准；即使顶层 `resultCode` 或 `error_code` 显示为 `1`，只要有 `data.rowid` 且没有错误对象，就保存该 rowid 继续回读，不要误判为创建失败。
 2. **不使用 HAP MCP**：
