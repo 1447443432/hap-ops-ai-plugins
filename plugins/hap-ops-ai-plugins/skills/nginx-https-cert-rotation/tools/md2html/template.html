@@ -124,6 +124,13 @@
       position: relative; margin: 16px 0; border-radius: 6px;
       overflow: hidden; border: 1px solid #d0d7de;
     }
+    .copy-code-btn {
+      position: absolute; top: 6px; right: 8px; z-index: 1;
+      padding: 3px 9px; border: 1px solid #d0d7de; border-radius: 5px;
+      background: #fff; color: #24292f; font-size: 12px; cursor: pointer;
+    }
+    .copy-code-btn:hover { background: #f3f4f6; border-color: #8c959f; }
+    .copy-code-btn:focus-visible { outline: 2px solid #0969da; outline-offset: 2px; }
     .code-block pre {
       background: #f6f8fa; color: #24292f; margin: 0;
       padding: 16px; overflow-x: auto;
@@ -332,6 +339,35 @@
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+})();
+
+// 代码块一键复制；Clipboard API 不可用时回退到 execCommand。
+(function() {
+  document.querySelectorAll('.copy-code-btn').forEach(function(button) {
+    button.addEventListener('click', async function() {
+      var code = button.closest('.code-block').querySelector('pre code');
+      var value = code ? code.innerText : '';
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(value);
+        } else {
+          var area = document.createElement('textarea');
+          area.value = value;
+          area.style.position = 'fixed';
+          area.style.opacity = '0';
+          document.body.appendChild(area);
+          area.select();
+          var copied = document.execCommand('copy');
+          area.remove();
+          if (!copied) throw new Error('copy failed');
+        }
+        button.textContent = '已复制';
+      } catch (error) {
+        button.textContent = '复制失败';
+      }
+      window.setTimeout(function() { button.textContent = '复制'; }, 1500);
+    });
+  });
 })();
 </script>
 </body>

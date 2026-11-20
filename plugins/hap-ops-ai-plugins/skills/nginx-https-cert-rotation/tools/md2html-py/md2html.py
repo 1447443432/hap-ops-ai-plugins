@@ -584,7 +584,8 @@ def process_code_blocks(body):
         valid = lang if lang in _LANG_HINTS else ''
         label = '<span class="code-lang-label">' + valid + '</span>' if valid else ''
         attrs = opening[len('<pre><code'):]  # ' class="language-x">' 或 '>'
-        return ('<div class="code-block" data-lang="' + valid + '">' + label +
+        button = '<button class="copy-code-btn" type="button" aria-label="复制代码">复制</button>'
+        return ('<div class="code-block" data-lang="' + valid + '">' + label + button +
                 '<pre><code' + attrs + code + '</code></pre></div>')
 
     return _CODE_BLOCK_RE.sub(_repl, body)
@@ -744,7 +745,7 @@ def find_template():
 def main():
     ap = argparse.ArgumentParser(
         description='Convert HAP Upgrade Guide Markdown to a single-file HTML document '
-                    '(sidebar TOC, responsive layout, no copy buttons).')
+                    '(sidebar TOC, code block copy buttons, responsive layout).')
     ap.add_argument('-input', required=True, help='Input Markdown file path')
     ap.add_argument('-output', required=True, help='Output HTML file path')
     ap.add_argument('-title', default='', help='Document title (auto from first h1 if empty)')
