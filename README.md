@@ -15,6 +15,9 @@
 - `hap-delivery-docs`：HAP 私有部署交付文档套件生成。
 - `hap-deployment-troubleshooter`：HAP 私有部署故障排查和实战案例分析。
 - `hap-mongodb-slowlog-analysis`：MongoDB 4.4.x 慢日志分析、索引建议和命令生成。
+- `mdis-browser-visual-check`：MDIS 页面主题、可读性与响应式布局的浏览器视觉自测。
+- `mdis-issue-log`：维护 MDIS 问题记录、排查证据和验证状态。
+- `mdis-theme-maintenance`：维护 MDIS 页面和控件的深浅主题一致性。
 - `github-image-workflow-builder`：创建、修复和验证多架构 GitHub Actions 镜像构建及发布流程。
 - `nginx-https-cert-rotation`：生成 Nginx HTTPS 证书更换、校验和回滚手册。
 - `hap-package-link-sync`：核验并同步 HAP 软件包信息及文档使用状态。
@@ -37,9 +40,10 @@ codex plugin add hap-ops-ai-plugins@personal
 
 在插件的 `skills/` 下创建小写连字符目录，并添加 `SKILL.md`。可按需添加 `references/`、`assets/`、`tools/` 等资源。插件 manifest 通过 `"skills": "./skills/"` 自动发现 skills，通常不需要修改 `plugin.json`。
 
-完成变更后，验证插件并更新本地缓存标识：
+完成变更后，验证插件清单与新增技能，并更新 `plugin.json` 中的版本缓存标识，再重新安装插件：
 
 ```powershell
-python "$env:USERPROFILE/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py" "plugins/hap-ops-ai-plugins"
-python "$env:USERPROFILE/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py" "plugins/hap-ops-ai-plugins"
+python -X utf8 -m json.tool plugins/hap-ops-ai-plugins/.codex-plugin/plugin.json | Out-Null
+python -X utf8 "$env:USERPROFILE/.codex/skills/.system/skill-creator/scripts/quick_validate.py" plugins/hap-ops-ai-plugins/skills/mdis-theme-maintenance
+codex plugin add hap-ops-ai-plugins@personal
 ```
