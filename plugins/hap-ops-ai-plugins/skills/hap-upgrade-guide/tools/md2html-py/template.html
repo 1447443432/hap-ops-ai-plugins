@@ -165,6 +165,10 @@
     }
     .url-copy-btn:hover { background: rgba(175,184,193,1); }
     .url-copy-btn.copied { background: #2ea44f; color: #fff; border-color: transparent; }
+    .url-copy-all-wrap { margin: 8px 0 10px; text-align: right; }
+    .url-copy-all-btn { padding: 5px 12px; background: #2da44e; color: #fff; border: 1px solid #218739; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .url-copy-all-btn:hover { background: #218739; }
+    .url-copy-all-btn.copied { background: #176b2c; color: #fff; border-color: transparent; }
 
     /* ========= 侧边栏关闭按钮（桌面端和移动端均显示） ========= */
     .sidebar-close {
@@ -264,6 +268,52 @@ document.querySelectorAll('.copy-btn').forEach(function(btn) {
       });
     });
     td.appendChild(btn);
+  });
+})();
+
+// 下载资源表格复制按钮（保留每条 URL 原有的单独复制按钮）
+(function() {
+  function copyAllText(text, success) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(success);
+      return;
+    }
+    var input = document.createElement('textarea');
+    input.value = text;
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.focus();
+    input.select();
+    document.execCommand('copy');
+    document.body.removeChild(input);
+    success();
+  }
+  document.querySelectorAll('table').forEach(function(table) {
+    var header = table.querySelector('thead tr');
+    if (!header || header.textContent.indexOf('文件') === -1 || header.textContent.indexOf('下载链接') === -1) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'url-copy-all-wrap';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'url-copy-all-btn';
+    btn.textContent = '复制全部下载链接';
+    btn.addEventListener('click', function() {
+      var content = [];
+      table.querySelectorAll('tbody tr').forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (cells.length < 2) return;
+        var link = cells[1].querySelector('a');
+        content.push(cells[0].textContent.trim() + '\n' + (link ? link.href : cells[1].textContent.trim()));
+      });
+      copyAllText(content.join('\n'), function() {
+        btn.textContent = '已复制全部链接';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = '复制全部下载链接'; btn.classList.remove('copied'); }, 1600);
+      });
+    });
+    wrap.appendChild(btn);
+    table.parentNode.insertBefore(wrap, table);
   });
 })();
 
