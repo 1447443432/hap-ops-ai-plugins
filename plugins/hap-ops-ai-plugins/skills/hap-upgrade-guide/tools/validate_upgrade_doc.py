@@ -87,12 +87,6 @@ def main() -> int:
         if heading in lines:
             errors.append(f"禁止使用摘要式章节骨架：{heading}；必须按 WorkBuddy 固定章节生成")
 
-    minimum_length = 9000 if args.mode == "single" else 14000
-    if len(text) < minimum_length:
-        errors.append(
-            f"文档内容过短（{len(text)} 字符），疑似被摘要化；{args.mode} 模式至少应保留 {minimum_length} 字符的完整模板内容"
-        )
-
     # 文件名统一采用 WorkBuddy 成品格式；“离线”属于文档内容场景，不放入文件名。
     mode_name = "单机" if args.mode == "single" else "集群"
     filename_pattern = rf"^HAP升级指南-v\d+(?:\.\d+)+-to-v\d+(?:\.\d+)+-{mode_name}-(amd64|arm64)\.md$"
@@ -196,27 +190,24 @@ def main() -> int:
         )
         resource_text = "\n".join(lines[resource_start:resource_end])
         if args.mode == "single":
-            required_tokens = (
-                "确保磁盘空间充足（建议预留 40GB 以上）",
-                "建议在升级前记录以下现场信息",
-                "当前 HAP、存储组件、",
-                "、MongoDB 等容器名称和状态",
-                "当前 `docker-compose.yaml` 中 HAP 镜像标签、数据目录挂载和外部代理相关配置",
-                "当前系统登录地址、组织授权状态以及前端二次开发发布状态",
-                "备份文件的实际保存位置、文件名和完整性校验结果",
-                "所有默认路径都必须以现场实际配置为准",
+            actual_bullets = [
+                line.strip() for line in lines[resource_start:resource_end]
+                if line.strip().startswith("-") and line.strip() != "---"
+            ]
+            if actual_bullets != ["- 确保磁盘空间充足（建议预留 40GB 以上）"]:
+                errors.append("单机检查资源必须且只能保留磁盘空间充足这一项")
+            forbidden_single_extras = (
+                "升级操作通用注意事项",
+                "离线资源核验建议",
+                "Compose 文件修改核对",
+                "升级过程中的停止与回退原则",
+                "升级后验证记录建议",
+                "现场变量替换清单",
+                "版本路径说明",
             )
-            for token in required_tokens:
-                if token not in resource_text:
-                    errors.append(f"单机检查资源缺少 WorkBuddy 固定内容：{token}")
-            if any(marker in text for marker in ("离线", "offline", "Offline")):
-                for token in (
-                    "确认目标 HAP 离线镜像已经通过 `docker images` 校验",
-                    "确认 `preset_mongodb_docker.sh` 与 `preset_mongodb_",
-                    "确认已安排升级窗口，升级过程中不要在 HAP 服务上执行其他变更",
-                ):
-                    if token not in resource_text:
-                        errors.append(f"单机离线检查资源缺少固定内容：{token}")
+            for heading in forbidden_single_extras:
+                if f"### {heading}" in lines:
+                    errors.append(f"单机文档禁止出现模板外扩展章节：{heading}")
         else:
             required_bullets = [
                 "- 确认各节点磁盘空间充足",

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HAP 升级文档问题记录</title>
+  <style>
+    :root { color-scheme: light; --ink:#1f2328; --muted:#59636e; --line:#d8dee4; --link:#0969da; --panel:#f6f8fa; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font:16px/1.7 system-ui,"Microsoft YaHei",sans-serif; }
+    .layout { display:grid; grid-template-columns:260px minmax(0,1fr); max-width:1200px; margin:auto; }
+    nav { position:sticky; top:0; align-self:start; height:100vh; overflow:auto; padding:24px 18px; border-right:1px solid var(--line); }
+    nav a { color:var(--link); text-decoration:none; }
+    nav ul { padding-left:20px; }
+    main { min-width:0; padding:32px clamp(20px,5vw,64px); }
+    h1,h2,h3 { line-height:1.3; }
+    h2 { margin-top:2.2em; padding-bottom:.4em; border-bottom:1px solid var(--line); }
+    h3 { margin-top:1.8em; }
+    .meta { color:var(--muted); font-size:.92em; }
+    .case { padding:0 0 20px; border-bottom:1px solid var(--line); }
+    code { background:var(--panel); padding:.1em .35em; border-radius:4px; }
+    @media(max-width:760px) { .layout { display:block; } nav { position:static; height:auto; border-right:0; border-bottom:1px solid var(--line); } main { padding:22px 18px; } }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav aria-label="问题目录">
+    <strong>问题目录</strong>
+    <ul><li><a href="#2026-11-24">2026-11-24</a>
+      <ul>
+        <li><a href="#fixed-section-drift">单机固定区域被扩写且 HTML 未同步</a></li>
+      </ul>
+    </li></ul>
+  </nav>
+  <main>
+    <h1>HAP 升级文档问题记录</h1>
+    <p>记录升级文档生成、模板约束和输出中的已知问题及处理进展。</p>
+
+    <h2 id="2026-11-24">2026-11-24</h2>
+    <article class="case">
+      <h3 id="fixed-section-drift">单机固定区域被扩写且 HTML 未同步</h3>
+      <p class="meta">发现时间：2026-11-24（具体时间未知，Asia/Shanghai）｜记录时间：2026-11-24｜最后更新时间：2026-11-24</p>
+
+      <h4>环境与表现</h4>
+      <ul>
+        <li>涉及文档：v7.3.4 → v7.5.6，单机，AMD64，离线。</li>
+        <li>“5. 检查资源”中出现了用户要求删除的离线核验项、现场信息清单和额外结尾提示。</li>
+        <li>升级步骤中额外出现通用注意事项、离线资源核验、Compose 文件核对、回退原则、验证记录、变量清单和版本路径说明等非模板章节。</li>
+        <li>MongoDB 预置数据更新命令后出现未经用户要求的补充段落。</li>
+        <li>Markdown 已删改后，HTML 仍残留旧章节，导致两种格式内容不一致。</li>
+      </ul>
+
+      <h4>已确认原因</h4>
+      <ul>
+        <li>生成时在固定模板之外加入了扩展说明。</li>
+        <li>Markdown 删除后没有通过统一交付流程重建 HTML；手工同步不完整，留下目录与正文残留。</li>
+        <li>最终校验器的最小字符数门槛阻止了精简后的 Markdown 通过，但此前流程没有以模板完整性作为唯一标准妥善处理，最终造成格式输出不一致。</li>
+      </ul>
+
+      <h4>处理与防复发约束</h4>
+      <ul>
+        <li>单机检查资源区域按用户确认收敛：只保留磁盘空间检查项；其他删除项不得被模型补回。</li>
+        <li>禁止擅自增加不在固定模板中的升级说明小节或操作后的解释段落。</li>
+        <li>删除 MongoDB 预置数据命令后的附加解释，保留官方操作说明和实际命令。</li>
+        <li>用户指出 HTML 残留时，以修正后的 Markdown 为准重新生成整份 HTML；不能只改 Markdown 或仅删除 HTML 正文而遗漏目录。</li>
+      </ul>
+
+      <h4>涉及文件</h4>
+      <ul>
+        <li><code>升级文档/HAP升级指南-v7.3.4-to-v7.5.6-单机-amd64.md</code></li>
+        <li><code>升级文档/HAP升级指南-v7.3.4-to-v7.5.6-单机-amd64.html</code></li>
+        <li><code>plugins/hap-ops-ai-plugins/skills/hap-upgrade-guide/SKILL.md</code></li>
+      </ul>
+      <h4>解决结果</h4>
+      <ul>
+        <li>已从 Markdown 删除“5. 检查资源”中除磁盘空间外的框选内容。</li>
+        <li>已删除 MongoDB 预置数据命令之后的额外解释段落。</li>
+        <li>已从 Markdown 删除扩展注意事项、离线资源核验、Compose 核对、回退原则、验证记录、变量清单和版本路径等模板外章节。</li>
+        <li>因标准交付校验器的字符长度门槛未接受精简后的文档，使用项目 HTML 转换器根据修正后的 Markdown 重建 HTML；重建后检查旧章节与标题均不再出现在 HTML 中。</li>
+        <li>后续规则已在升级 Skill 中明确：固定区域不扩写，模板外小节不生成；Markdown 改动后必须重建 HTML 并核对目录和正文。</li>
+      </ul>
+      <p><strong>验证状态：</strong>本次截图涉及内容已从 Markdown 和重新生成的 HTML 中移除，单机文档两种格式已同步。标准最终校验器因文档长度门槛未通过；HTML 由项目转换器重新生成。</p>
+    </article>
+  </main>
+</div>
+</body>
+</html>

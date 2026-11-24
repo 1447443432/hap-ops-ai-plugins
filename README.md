@@ -11,12 +11,14 @@
 ## 当前 Skills
 
 - `hap-upgrade-guide`：HAP 私有部署升级咨询、兼容性核验和升级文档生成。
+- `hap-upgrade-issue-log`：记录 HAP 升级文档、模板约束和 HTML 输出问题及处理结果。
 - `hap-private-document-release`：HAP Private Document 构建、发布申请和结果核验。
 - `hap-delivery-docs`：HAP 私有部署交付文档套件生成。
 - `hap-deployment-troubleshooter`：HAP 私有部署故障排查和实战案例分析。
 - `hap-mongodb-slowlog-analysis`：MongoDB 4.4.x 慢日志分析、索引建议和命令生成。
 - `mdis-browser-visual-check`：MDIS 页面主题、可读性与响应式布局的浏览器视觉自测。
 - `mdis-issue-log`：维护 MDIS 问题记录、排查证据和验证状态。
+- `hap-upgrade-issue-log`：维护 HAP 升级文档生成、模板约束和 HTML 输出的问题记录。
 - `mdis-theme-maintenance`：维护 MDIS 页面和控件的深浅主题一致性。
 - `github-image-workflow-builder`：创建、修复和验证多架构 GitHub Actions 镜像构建及发布流程。
 - `nginx-https-cert-rotation`：生成 Nginx HTTPS 证书更换、校验和回滚手册。
